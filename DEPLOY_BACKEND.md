@@ -47,7 +47,52 @@
 
 ---
 
-## 🎯 Opção 3: Vercel
+## 🎯 Opção 3: Netlify Functions
+
+### Para Backend no Netlify:
+
+1. **Crie arquivo `netlify.toml` na raiz do projeto:**
+   ```toml
+   [build]
+     command = "npm run build"
+     functions = "netlify/functions"
+     publish = "dist"
+
+   [build.environment]
+     NODE_VERSION = "18"
+
+   [[redirects]]
+     from = "/api/*"
+     to = "/.netlify/functions/:splat"
+     status = 200
+   ```
+
+2. **Crie pasta `netlify/functions/` e arquivo `api.js`:**
+   ```javascript
+   // netlify/functions/api.js
+   import serverless from 'serverless-http';
+   import express from 'express';
+   import cors from 'cors';
+   import asaasRoutes from '../../backend/routes/asaas.js';
+
+   const app = express();
+   
+   app.use(cors());
+   app.use(express.json());
+   app.use('/api/asaas', asaasRoutes);
+   
+   export const handler = serverless(app);
+   ```
+
+3. **Configure variáveis no Netlify Dashboard:**
+   - Site Settings → Environment Variables
+   - Adicione: `ASAAS_API_KEY`, `ASAAS_API_URL`, `NODE_ENV`
+
+4. **Deploy automático via GitHub!**
+
+---
+
+## 🎯 Opção 4: Vercel
 
 1. **Acesse [vercel.com](https://vercel.com)**
 2. **Import Git Repository**
