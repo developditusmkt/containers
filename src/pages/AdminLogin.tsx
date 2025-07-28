@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Building2 } from 'lucide-react';
+import { LogIn, Building2, Key } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const AdminLogin: React.FC = () => {
@@ -91,6 +91,17 @@ export const AdminLogin: React.FC = () => {
             )}
           </button>
         </form>
+
+        {/* Link para esqueci minha senha */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="text-[#44A17C] hover:text-[#3e514f] font-medium transition-colors flex items-center justify-center gap-2 mx-auto"
+          >
+            <Key size={16} />
+            Esqueci minha senha
+          </button>
+        </div>
       </div>
     </div>
   );
