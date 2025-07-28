@@ -30,10 +30,17 @@ console.log('🔗 Backend URL detectada:', BACKEND_URL);
  */
 export async function createPaymentLink(quote: Quote) {
   console.log('🚀 Iniciando criação de link via backend (estrutura CURL validada)');
+  console.log('🔗 BACKEND_URL configurada:', BACKEND_URL);
+  console.log('🌐 Hostname atual:', window.location.hostname);
   
   try {
     // Verificar se backend está disponível
-    const healthResponse = await fetch(`${BACKEND_URL}/health`);
+    const healthUrl = `${BACKEND_URL}/health`;
+    console.log('❤️ Testando health check em:', healthUrl);
+    
+    const healthResponse = await fetch(healthUrl);
+    console.log('❤️ Health response status:', healthResponse.status);
+    
     if (!healthResponse.ok) {
       throw new Error(`Backend não está disponível - Status: ${healthResponse.status}`);
     }
@@ -57,7 +64,10 @@ export async function createPaymentLink(quote: Quote) {
 
     console.log('📋 Dados sendo enviados para backend:', JSON.stringify(paymentLinkData, null, 2));
 
-    const response = await fetch(`${BACKEND_URL}/asaas/payment-links`, {
+    const paymentUrl = `${BACKEND_URL}/asaas/payment-links`;
+    console.log('💰 URL do payment sendo chamada:', paymentUrl);
+
+    const response = await fetch(paymentUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
