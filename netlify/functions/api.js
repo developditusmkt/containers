@@ -1,7 +1,8 @@
-import axios from 'axios';
-
+// Usar fetch nativo ao invés de axios para evitar problemas de dependências
 export const handler = async (event, context) => {
-  console.log('🚀 Netlify Function chamada:', event.path, event.httpMethod);
+  console.log('🚀 Function iniciada');
+  console.log('📍 Path completo:', event.path);
+  console.log('🔧 Método HTTP:', event.httpMethod);
   
   // Headers CORS
   const headers = {
@@ -13,6 +14,7 @@ export const handler = async (event, context) => {
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
+    console.log('✅ Respondendo preflight OPTIONS');
     return {
       statusCode: 200,
       headers,
@@ -21,11 +23,13 @@ export const handler = async (event, context) => {
   }
 
   try {
-    const path = event.path.replace('/.netlify/functions/api', '');
-    console.log('📍 Path processado:', path);
+    // Processar path - remover prefixo da function
+    const path = event.path.replace('/.netlify/functions/api', '') || '/';
+    console.log('🎯 Path processado:', path);
     
-    // Health check
-    if (path === '/health' || path === '' || path === '/') {
+    // Health check - aceitar várias variações
+    if (path === '/health' || path === '' || path === '/' || event.path.includes('health')) {
+      console.log('❤️ Health check solicitado');
       return {
         statusCode: 200,
         headers,
@@ -35,17 +39,28 @@ export const handler = async (event, context) => {
           timestamp: new Date().toISOString(),
           environment: process.env.NODE_ENV || 'development',
           apiKeyConfigured: !!process.env.ASAAS_API_KEY,
-          receivedPath: path,
-          originalPath: event.path
+          receivedPath: event.path,
+          processedPath: path,
+          method: event.httpMethod
         })
       };
     }
 
-    // Payment links endpoint
-    if (path === '/asaas/payment-links' && event.httpMethod === 'POST') {
-      console.log('🎯 Criando payment link');
+    // Debug: mostrar todas as informações da requisição
+    console.log('🔍 Debug completo:', {
+      originalPath: event.path,
+      processedPath: path,
+      method: event.httpMethod,
+      hasBody: !!event.body,
+      bodyLength: event.body?.length || 0
+    });
+
+    // Payment links endpoint - ser mais flexível na detecção
+    if ((path.includes('payment-links') || path.includes('asaas')) && event.httpMethod === 'POST') {
+      console.log('🎯 Endpoint payment-links detectado');
       
       if (!process.env.ASAAS_API_KEY) {
+        console.log('❌ API Key não configurada');
         return {
           statusCode: 503,
           headers,
@@ -60,6 +75,7 @@ export const handler = async (event, context) => {
       }
 
       if (!event.body) {
+        console.log('❌ Body não encontrado');
         return {
           statusCode: 400,
           headers,
@@ -70,43 +86,75 @@ export const handler = async (event, context) => {
         };
       }
 
-      const paymentData = JSON.parse(event.body);
+      let paymentData;
+      try {
+        paymentData = JSON.parse(event.body);
+        console.log('📋 Dados recebidos:', paymentData);
+      } catch (parseError) {
+        console.log('❌ Erro ao fazer parse do JSON:', parseError);
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'JSON inválido'
+          })
+        };
+      }
       
-      console.log('📋 Dados para Asaas:', paymentData);
+      console.log('🌐 Fazendo requisição para Asaas com fetch...');
       
-      const response = await axios.post(
-        'https://api-sandbox.asaas.com/v3/paymentLinks',
-        paymentData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'access_token': process.env.ASAAS_API_KEY.replace(/"/g, '') // Remove aspas se houver
-          }
-        }
-      );
+      // Usar fetch nativo ao invés de axios
+      const asaasResponse = await fetch('https://api-sandbox.asaas.com/v3/paymentLinks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': process.env.ASAAS_API_KEY.replace(/"/g, '') // Remove aspas se houver
+        },
+        body: JSON.stringify(paymentData)
+      });
       
-      console.log('✅ Response Asaas:', response.data);
+      console.log('📡 Status da resposta Asaas:', asaasResponse.status);
+      
+      if (!asaasResponse.ok) {
+        const errorData = await asaasResponse.json();
+        console.log('❌ Erro Asaas:', errorData);
+        
+        return {
+          statusCode: asaasResponse.status,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: errorData
+          })
+        };
+      }
+      
+      const responseData = await asaasResponse.json();
+      console.log('✅ Response Asaas recebida com sucesso');
       
       return {
         statusCode: 201,
         headers,
         body: JSON.stringify({
           success: true,
-          data: response.data
+          data: responseData
         })
       };
     }
 
     // Endpoint não encontrado
+    console.log('❌ Endpoint não encontrado:', path);
     return {
       statusCode: 404,
       headers,
       body: JSON.stringify({
         success: false,
-        error: `Endpoint não encontrado: ${path}`,
-        availableEndpoints: ['/health', '/asaas/payment-links'],
-        receivedMethod: event.httpMethod,
-        receivedPath: path
+        error: 'Endpoint não encontrado',
+        receivedPath: event.path,
+        processedPath: path,
+        method: event.httpMethod,
+        availableEndpoints: ['/health', '/asaas/payment-links (POST)']
       })
     };
 
@@ -119,9 +167,8 @@ export const handler = async (event, context) => {
       body: JSON.stringify({
         success: false,
         error: {
-          message: error.response?.data?.description || error.message,
-          details: error.response?.data || 'Erro interno',
-          asaasError: error.response?.data
+          message: error.message,
+          stack: error.stack
         }
       })
     };
