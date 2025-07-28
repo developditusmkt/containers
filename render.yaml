@@ -1,0 +1,16 @@
+# Render Deploy Configuration
+# https://render.com
+
+# Build Command: npm install
+# Start Command: npm start
+
+# Environment Variables needed:
+# NODE_ENV=production
+# ASAAS_API_KEY=your_production_api_key
+# ASAAS_API_URL=https://api.asaas.com/v3
+# PORT=10000
+
+# Auto-deploy from GitHub:
+# 1. Connect your GitHub repo
+# 2. Set environment variables
+# 3. Deploy automatically on each push

@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { Quote } from '../types';
 
 // Interface para representar o formato do banco de dados
-interface DatabaseQuote {
+export interface DatabaseQuote {
   id: string;
   customer_name: string;
   customer_email: string;
@@ -50,7 +50,7 @@ const quoteToDatabase = (quote: Quote): Omit<DatabaseQuote, 'id' | 'created_at'>
 });
 
 // Converter formato do banco de dados para Quote
-const databaseToQuote = (dbQuote: DatabaseQuote): Quote => ({
+export const databaseToQuote = (dbQuote: DatabaseQuote): Quote => ({
   id: dbQuote.id,
   customer: {
     name: dbQuote.customer_name,
@@ -152,18 +152,57 @@ export const updateQuote = async (id: string, updates: Partial<Quote>): Promise<
   if (updates.paymentMethod !== undefined) dbUpdates.payment_method = updates.paymentMethod;
   if (updates.paymentLink !== undefined) dbUpdates.payment_link = updates.paymentLink;
 
+  console.log('🔍 Atualizando orçamento:', { id, dbUpdates });
+
+  // Primeiro, vamos verificar se o orçamento existe
+  const { data: existingQuote, error: checkError } = await supabase
+    .from('quotes')
+    .select('id, customer_name')
+    .eq('id', id)
+    .single();
+  
+  console.log('� Verificação inicial do orçamento:', { existingQuote, checkError });
+  
+  if (checkError || !existingQuote) {
+    throw new Error(`Orçamento com ID ${id} não foi encontrado na base de dados. Erro: ${checkError?.message || 'Não encontrado'}`);
+  }
+
+  // Agora fazemos o update
   const { data, error } = await supabase
     .from('quotes')
     .update(dbUpdates)
     .eq('id', id)
-    .select()
-    .single();
+    .select();
+
+  console.log('� Resultado da atualização:', { data, error, affectedRows: data?.length });
 
   if (error) {
+    console.error('❌ Erro no Supabase:', error);
     throw new Error(`Erro ao atualizar orçamento: ${error.message}`);
   }
 
-  return databaseToQuote(data);
+  if (!data || data.length === 0) {
+    console.warn('⚠️ Update retornou array vazio, buscando registro diretamente...');
+    
+    // Buscar o registro para verificar se existe e se foi atualizado
+    const { data: currentData, error: fetchError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchError || !currentData) {
+      throw new Error(`Orçamento não encontrado após update. ID: ${id}`);
+    }
+    
+    console.log('✅ Registro encontrado, usando dados atuais:', currentData.id);
+    return databaseToQuote(currentData);
+  }
+
+  // Pega o primeiro resultado se houver múltiplos
+  const updatedQuote = Array.isArray(data) ? data[0] : data;
+  console.log('✅ Orçamento atualizado com sucesso:', updatedQuote);
+  return databaseToQuote(updatedQuote);
 };
 
 // Deletar orçamento

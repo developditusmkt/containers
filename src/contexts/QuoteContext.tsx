@@ -84,17 +84,30 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateQuote = async (id: string, updates: Partial<Quote>): Promise<void> => {
     try {
       setError(null);
-      const updatedQuote = await updateQuoteService(id, updates);
-      setQuotes(prev => prev.map(quote => 
-        quote.id === id ? updatedQuote : quote
-      ));
-    } catch (err) {
-      console.error('Erro ao atualizar orçamento:', err);
-      setError('Erro ao atualizar orçamento');
-      // Fallback: atualizar apenas na memória
+      console.log('🔄 QuoteContext: Atualizando orçamento:', id, updates);
+      
+      // Primeiro atualiza na memória para melhorar UX
       setQuotes(prev => prev.map(quote => 
         quote.id === id ? { ...quote, ...updates } : quote
       ));
+      
+      // Depois tenta atualizar no banco
+      try {
+        const updatedQuote = await updateQuoteService(id, updates);
+        // Se deu certo, atualiza com os dados do banco
+        setQuotes(prev => prev.map(quote => 
+          quote.id === id ? updatedQuote : quote
+        ));
+        console.log('✅ QuoteContext: Orçamento atualizado com sucesso no banco');
+      } catch (dbError) {
+        console.warn('⚠️ QuoteContext: Erro ao atualizar no banco, mantendo atualização local:', dbError);
+        // Mantém a atualização local que já foi feita
+        // Não lança erro para não quebrar o fluxo do usuário
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar orçamento:', err);
+      setError('Erro ao atualizar orçamento');
+      throw err;
     }
   };
 

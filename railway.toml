@@ -1,0 +1,17 @@
+# Railway Deploy Configuration
+# https://railway.app
+
+# Dockerfile (alternative)
+# FROM node:18-alpine
+# WORKDIR /app
+# COPY backend/package*.json ./
+# RUN npm install
+# COPY backend/ ./
+# EXPOSE 3001
+# CMD ["npm", "start"]
+
+# Environment Variables needed:
+# NODE_ENV=production
+# ASAAS_API_KEY=your_production_api_key
+# ASAAS_API_URL=https://api.asaas.com/v3
+# PORT=3001

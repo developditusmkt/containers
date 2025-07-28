@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Quote } from '../types';
 import { useQuotes } from '../contexts/QuoteContext';
 import { formatCurrency, formatDate, formatPhone } from '../utils/formatters';
-import { Eye, Trash2, Search } from 'lucide-react';
+import { Eye, Trash2, Search, Edit, FileText, CreditCard, CheckCircle, Copy, ExternalLink } from 'lucide-react';
+// Usando integração inteligente (real ou mock automaticamente)
+import { createPaymentLink, validateAsaasConfig, diagnoseAsaasConfig } from '../services/asaasIntegration';
 
 export const QuoteManagement: React.FC = () => {
   const { quotes, deleteQuote, updateQuote, refreshQuotes, loading } = useQuotes();
@@ -10,6 +12,20 @@ export const QuoteManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    assignedTo: '',
+    internalNotes: '',
+    finalApprovedAmount: '',
+    paymentMethod: '',
+  });
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingPayment, setIsGeneratingPayment] = useState(false);
+  const [showPaymentLinkNotification, setShowPaymentLinkNotification] = useState(false);
+  const [paymentLinkData, setPaymentLinkData] = useState({ amount: '', customerName: '', link: '' });
 
   useEffect(() => {
     refreshQuotes();
@@ -51,6 +67,166 @@ export const QuoteManagement: React.FC = () => {
   const closeModal = () => {
     setShowModal(false);
     setSelectedQuote(null);
+  };
+
+  const openEditModal = (quote: Quote) => {
+    setSelectedQuote(quote);
+    setEditFormData({
+      assignedTo: quote.assignedTo || '',
+      internalNotes: quote.internalNotes || '',
+      finalApprovedAmount: quote.finalApprovedAmount?.toString() || '',
+      paymentMethod: quote.paymentMethod || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setSelectedQuote(null);
+    setEditFormData({
+      assignedTo: '',
+      internalNotes: '',
+      finalApprovedAmount: '',
+      paymentMethod: '',
+    });
+  };
+
+  const handleEditFormChange = (field: string, value: string) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedQuote || isSaving) return;
+
+    setIsSaving(true);
+    
+    try {
+      const updates = {
+        assignedTo: editFormData.assignedTo,
+        internalNotes: editFormData.internalNotes,
+        finalApprovedAmount: editFormData.finalApprovedAmount ? parseFloat(editFormData.finalApprovedAmount) : undefined,
+        paymentMethod: editFormData.paymentMethod,
+      };
+
+      await updateQuote(selectedQuote.id, updates);
+      closeEditModal();
+      
+      // Mostrar mensagem de sucesso
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000); // Esconder após 3 segundos
+    } catch (error) {
+      console.error('Erro ao salvar alterações:', error);
+      
+      // Mostrar mensagem de erro
+      setErrorMessage('Erro ao salvar alterações. Tente novamente.');
+      setShowErrorMessage(true);
+      setTimeout(() => {
+        setShowErrorMessage(false);
+        setErrorMessage('');
+      }, 4000); // Esconder após 4 segundos
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleGenerateContract = (quote: Quote) => {
+    // Função para gerar contrato - implementar integração futura
+    alert(`Gerar contrato para ${quote.customer.name}\nID: ${quote.id}\nEsta funcionalidade será implementada em breve.`);
+  };
+
+  const handleGeneratePaymentLink = async (quote: Quote) => {
+    // Validar configuração do Asaas
+    const isConfigured = await validateAsaasConfig();
+    if (!isConfigured) {
+      const diagnosis = await diagnoseAsaasConfig();
+      setErrorMessage(diagnosis.issues.join(', ') || 'Configuração do Asaas inválida');
+      setShowErrorMessage(true);
+      setTimeout(() => {
+        setShowErrorMessage(false);
+        setErrorMessage('');
+      }, 10000);
+      return;
+    }
+
+    // Validar se o orçamento tem valor final aprovado
+    if (!quote.finalApprovedAmount || quote.finalApprovedAmount <= 0) {
+      setErrorMessage('Defina o valor final aprovado antes de gerar o link de pagamento');
+      setShowErrorMessage(true);
+      setTimeout(() => {
+        setShowErrorMessage(false);
+        setErrorMessage('');
+      }, 4000);
+      return;
+    }
+
+    setIsGeneratingPayment(true);
+    
+    try {
+      console.log('🚀 Gerando link de pagamento para orçamento:', quote.id);
+      const paymentLink = await createPaymentLink(quote);
+      console.log('💰 Link de pagamento criado:', paymentLink);
+      
+      // Atualizar o orçamento com o link de pagamento
+      console.log('📝 Atualizando orçamento com link:', quote.id, paymentLink.url);
+      await updateQuote(quote.id, {
+        paymentLink: paymentLink.url
+      });
+
+      // Mostrar mensagem de sucesso e abrir o link
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+
+      // Copiar link para a área de transferência
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(paymentLink.url);
+      }
+
+      // Configurar dados da notificação
+      setPaymentLinkData({
+        amount: formatCurrency(quote.finalApprovedAmount),
+        customerName: quote.customer.name,
+        link: paymentLink.url
+      });
+
+      // Mostrar notificação moderna
+      setShowPaymentLinkNotification(true);
+      setTimeout(() => {
+        setShowPaymentLinkNotification(false);
+      }, 6000);
+
+      // Abrir o link em nova aba após um pequeno delay
+      setTimeout(() => {
+        window.open(paymentLink.url, '_blank');
+      }, 1000);
+
+    } catch (error) {
+      console.error('Erro ao gerar link de pagamento:', error);
+      
+      let errorMsg = 'Erro ao gerar link de pagamento';
+      
+      // Tratamento específico para CORS
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        errorMsg = '⚠️ Erro de CORS detectado!\n\nPara resolver este problema:\n1. Configure um backend proxy\n2. Use variáveis de ambiente corretas\n3. Verifique as chaves da API\n\nConsulte a documentação para mais detalhes.';
+      } else if (error instanceof Error) {
+        errorMsg = error.message;
+      }
+      
+      setErrorMessage(errorMsg);
+      setShowErrorMessage(true);
+      setTimeout(() => {
+        setShowErrorMessage(false);
+        setErrorMessage('');
+      }, 8000);
+    } finally {
+      setIsGeneratingPayment(false);
+    }
   };
 
   const getStatusColor = (status: Quote['status']): string => {
@@ -193,12 +369,52 @@ export const QuoteManagement: React.FC = () => {
                         <button
                           onClick={() => openQuoteDetails(quote)}
                           className="text-[#44A17C] hover:text-[#3a8f6c] flex items-center"
+                          title="Ver detalhes"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => openEditModal(quote)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center"
+                          title="Editar informações comerciais"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleGenerateContract(quote)}
+                          className="text-purple-600 hover:text-purple-900 flex items-center"
+                          title="Gerar contrato"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            console.log('🔍 Quote clicado:', quote);
+                            console.log('🆔 ID do quote:', quote.id);
+                            console.log('📊 Tipo do ID:', typeof quote.id);
+                            handleGeneratePaymentLink(quote);
+                          }}
+                          disabled={isGeneratingPayment}
+                          className={`flex items-center ${
+                            isGeneratingPayment 
+                              ? 'text-gray-400 cursor-not-allowed' 
+                              : 'text-orange-600 hover:text-orange-900'
+                          }`}
+                          title={isGeneratingPayment ? "Gerando link de pagamento..." : "Gerar link de pagamento"}
+                        >
+                          {isGeneratingPayment ? (
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <CreditCard className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDeleteQuote(quote.id)}
                           className="text-red-600 hover:text-red-900 flex items-center"
+                          title="Excluir orçamento"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -350,6 +566,210 @@ export const QuoteManagement: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Edição */}
+      {showEditModal && selectedQuote && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Editar Informações Comerciais
+                </h3>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="sr-only">Fechar</span>
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Informações do Cliente (readonly) */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-2">Cliente</h4>
+                  <p className="text-sm text-gray-700">
+                    <strong>{selectedQuote.customer.name}</strong> - {selectedQuote.customer.email}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    Total do Orçamento: <strong>{formatCurrency(selectedQuote.totalPrice)}</strong>
+                  </p>
+                </div>
+
+                {/* Responsável pelo Atendimento */}
+                <div>
+                  <label htmlFor="assignedTo" className="block text-sm font-medium text-gray-700 mb-2">
+                    Responsável pelo Atendimento
+                  </label>
+                  <input
+                    type="text"
+                    id="assignedTo"
+                    value={editFormData.assignedTo}
+                    onChange={(e) => handleEditFormChange('assignedTo', e.target.value)}
+                    placeholder="Digite o nome do responsável pelo atendimento"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
+                  />
+                </div>
+
+                {/* Observações Internas */}
+                <div>
+                  <label htmlFor="internalNotes" className="block text-sm font-medium text-gray-700 mb-2">
+                    Observações Internas
+                  </label>
+                  <textarea
+                    id="internalNotes"
+                    rows={4}
+                    value={editFormData.internalNotes}
+                    onChange={(e) => handleEditFormChange('internalNotes', e.target.value)}
+                    placeholder="Adicione observações internas sobre este orçamento..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
+                  />
+                </div>
+
+                {/* Orçamento Final Aprovado */}
+                <div>
+                  <label htmlFor="finalApprovedAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                    Orçamento Final Aprovado
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500">R$</span>
+                    <input
+                      type="number"
+                      id="finalApprovedAmount"
+                      step="0.01"
+                      min="0"
+                      value={editFormData.finalApprovedAmount}
+                      onChange={(e) => handleEditFormChange('finalApprovedAmount', e.target.value)}
+                      placeholder="0,00"
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Valor base: {formatCurrency(selectedQuote.totalPrice)}
+                  </p>
+                </div>
+
+                {/* Forma de Pagamento */}
+                <div>
+                  <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700 mb-2">
+                    Forma de Pagamento
+                  </label>
+                  <select
+                    id="paymentMethod"
+                    value={editFormData.paymentMethod}
+                    onChange={(e) => handleEditFormChange('paymentMethod', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
+                  >
+                    <option value="">Selecione a forma de pagamento</option>
+                    <option value="À vista - PIX">À vista - PIX</option>
+                    <option value="À vista - Dinheiro">À vista - Dinheiro</option>
+                    <option value="À vista - Cartão de Débito">À vista - Cartão de Débito</option>
+                    <option value="Cartão de Crédito - 1x">Cartão de Crédito - 1x</option>
+                    <option value="Cartão de Crédito - 2x">Cartão de Crédito - 2x</option>
+                    <option value="Cartão de Crédito - 3x">Cartão de Crédito - 3x</option>
+                    <option value="Cartão de Crédito - 4x">Cartão de Crédito - 4x</option>
+                    <option value="Cartão de Crédito - 5x">Cartão de Crédito - 5x</option>
+                    <option value="Cartão de Crédito - 6x">Cartão de Crédito - 6x</option>
+                    <option value="Boleto Bancário">Boleto Bancário</option>
+                    <option value="Transferência Bancária">Transferência Bancária</option>
+                    <option value="Financiamento">Financiamento</option>
+                    <option value="Parcelado - 50% + 50%">Parcelado - 50% + 50%</option>
+                    <option value="Parcelado - 30% + 70%">Parcelado - 30% + 70%</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={closeEditModal}
+                  className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                  className={`px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-[#44A17C] flex items-center ${
+                    isSaving 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-[#44A17C] hover:bg-[#3a8f6c]'
+                  }`}
+                >
+                  {isSaving && (
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                  {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mensagem de Sucesso */}
+      {showSuccessMessage && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center animate-fade-in">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="font-medium">Dados salvos com sucesso!</span>
+        </div>
+      )}
+
+      {/* Notificação de Link de Pagamento */}
+      {showPaymentLinkNotification && (
+        <div className="fixed top-4 right-4 max-w-md bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+          <div className="p-6">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <CheckCircle className="w-8 h-8 text-green-100" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h3 className="text-lg font-semibold">Link de Pagamento Gerado!</h3>
+                  <Copy className="w-4 h-4 text-green-200" />
+                </div>
+                <div className="space-y-2 text-sm text-green-50">
+                  <p><span className="font-medium">Cliente:</span> {paymentLinkData.customerName}</p>
+                  <p><span className="font-medium">Valor:</span> {paymentLinkData.amount}</p>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium">Status:</span>
+                    <span className="bg-green-400 bg-opacity-50 px-2 py-1 rounded text-xs font-medium">
+                      Copiado para área de transferência
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4 bg-white bg-opacity-10 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-green-100 font-medium">Pronto para enviar!</span>
+                    <ExternalLink className="w-4 h-4 text-green-200" />
+                  </div>
+                  <p className="text-xs text-green-100 mt-1 opacity-90">
+                    Cole o link onde desejar para compartilhar
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-green-300 to-emerald-400"></div>
+        </div>
+      )}
+
+      {/* Mensagem de Erro */}
+      {showErrorMessage && (
+        <div className="fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center animate-fade-in">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          <span className="font-medium">{errorMessage}</span>
         </div>
       )}
     </div>

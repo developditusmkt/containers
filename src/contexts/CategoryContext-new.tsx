@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Category, Item } from '../types';
+import { Category } from '../types';
 import { CategoryService, ItemService } from '../services/categoryService';
 import { categories as fallbackCategories } from '../data/categories';
 

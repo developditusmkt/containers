@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página de Pagamento - Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #44A17C 0%, #3e514f 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="max-w-md w-full">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="gradient-bg w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Página de Pagamento</h1>
+                <p class="text-gray-600">Demonstração de integração com Asaas</p>
+            </div>
+
+            <!-- Cartão de Pagamento -->
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <!-- Cabeçalho do cartão -->
+                <div class="gradient-bg p-6 text-white">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm opacity-90">Orçamento</span>
+                        <span class="bg-white bg-opacity-20 px-3 py-1 rounded-full text-xs font-medium">
+                            🧪 DEMO
+                        </span>
+                    </div>
+                    <h2 class="text-xl font-semibold mb-1" id="customerName">Cliente Demo</h2>
+                    <p class="text-sm opacity-90" id="orderDescription">Orçamento de serviços</p>
+                </div>
+
+                <!-- Corpo do cartão -->
+                <div class="p-6">
+                    <!-- Valor -->
+                    <div class="text-center mb-6">
+                        <p class="text-gray-600 text-sm mb-1">Valor a pagar</p>
+                        <p class="text-3xl font-bold text-gray-900" id="paymentAmount">R$ 1.500,00</p>
+                    </div>
+
+                    <!-- Métodos de pagamento -->
+                    <div class="space-y-4 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">Escolha como pagar</h3>
+                        
+                        <!-- PIX -->
+                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-green-500 cursor-pointer transition-colors" onclick="selectPayment('pix')">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <span class="text-green-600 font-bold text-sm">PIX</span>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900">PIX</p>
+                                    <p class="text-sm text-gray-600">Pagamento instantâneo</p>
+                                </div>
+                                <div class="text-green-600 font-semibold">5% desconto</div>
+                            </div>
+                        </div>
+
+                        <!-- Cartão de crédito -->
+                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-blue-500 cursor-pointer transition-colors" onclick="selectPayment('credit')">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900">Cartão de Crédito</p>
+                                    <p class="text-sm text-gray-600">Parcelamento em até 12x</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boleto -->
+                        <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-orange-500 cursor-pointer transition-colors" onclick="selectPayment('boleto')">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900">Boleto Bancário</p>
+                                    <p class="text-sm text-gray-600">Vencimento em 7 dias</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botão de pagamento -->
+                    <button 
+                        id="payButton" 
+                        class="w-full gradient-bg text-white font-semibold py-4 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        onclick="processPayment()"
+                        disabled
+                    >
+                        Selecione um método de pagamento
+                    </button>
+
+                    <!-- Info sobre demo -->
+                    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <div class="flex items-start space-x-2">
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.098 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <div class="text-sm">
+                                <p class="font-medium text-yellow-800 mb-1">Modo Demonstração</p>
+                                <p class="text-yellow-700">Esta é uma simulação da tela de pagamento. Para processar pagamentos reais, configure a integração com Asaas no backend.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center mt-8">
+                <p class="text-sm text-gray-500">Powered by Sistema Alencar Orçamentos</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedMethod = null;
+
+        // Função para obter parâmetros da URL
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                customer: params.get('customer') || 'Cliente Demo',
+                amount: params.get('amount') || 'R$ 1.500,00',
+                description: params.get('description') || 'Orçamento de serviços'
+            };
+        }
+
+        // Inicializar página com dados da URL
+        function initializePage() {
+            const params = getUrlParams();
+            document.getElementById('customerName').textContent = params.customer;
+            document.getElementById('paymentAmount').textContent = params.amount;
+            document.getElementById('orderDescription').textContent = params.description;
+        }
+
+        // Selecionar método de pagamento
+        function selectPayment(method) {
+            // Remove seleção anterior
+            document.querySelectorAll('.border-2').forEach(el => {
+                el.classList.remove('border-green-500', 'border-blue-500', 'border-orange-500', 'bg-gray-50');
+                el.classList.add('border-gray-200');
+            });
+
+            // Adiciona seleção atual
+            const element = event.currentTarget;
+            element.classList.remove('border-gray-200');
+            element.classList.add('bg-gray-50');
+            
+            if (method === 'pix') {
+                element.classList.add('border-green-500');
+            } else if (method === 'credit') {
+                element.classList.add('border-blue-500');
+            } else if (method === 'boleto') {
+                element.classList.add('border-orange-500');
+            }
+
+            selectedMethod = method;
+            
+            // Habilita o botão
+            const button = document.getElementById('payButton');
+            button.disabled = false;
+            
+            if (method === 'pix') {
+                button.textContent = 'Pagar com PIX';
+            } else if (method === 'credit') {
+                button.textContent = 'Pagar com Cartão';
+            } else if (method === 'boleto') {
+                button.textContent = 'Gerar Boleto';
+            }
+        }
+
+        // Processar pagamento (demo)
+        function processPayment() {
+            if (!selectedMethod) return;
+
+            const button = document.getElementById('payButton');
+            const originalText = button.textContent;
+            
+            button.disabled = true;
+            button.textContent = 'Processando...';
+
+            // Simula processamento
+            setTimeout(() => {
+                alert(`🎉 Demonstração concluída!\n\nMétodo selecionado: ${selectedMethod.toUpperCase()}\n\n⚠️ Este é apenas um exemplo. Para pagamentos reais, configure a integração com Asaas.`);
+                
+                button.disabled = false;
+                button.textContent = originalText;
+            }, 2000);
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html>
