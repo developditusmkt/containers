@@ -47,7 +47,6 @@ CREATE TABLE IF NOT EXISTS quotes (
   payment_link TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-);
 
 -- Criar índices para a tabela de orçamentos
 CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status);
