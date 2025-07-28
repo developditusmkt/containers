@@ -1,0 +1,15 @@
+{
+  "name": "alencar-orcamentos-netlify",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:frontend && npm run build:functions",
+    "build:frontend": "npm run build --prefix .",
+    "build:functions": "echo 'Functions ready for Netlify'",
+    "dev": "npm run dev --prefix .",
+    "preview": "npm run preview --prefix ."
+  },
+  "devDependencies": {
+    "@netlify/plugin-functions": "^0.1.0"
+  }
+}

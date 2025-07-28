@@ -1,10 +1,41 @@
-# 🚀 Deploy do Backend
+# 🚀 Deploy Completo Frontend + Backend
 
 ## 📋 Pré-requisitos
 - Conta no GitHub (já tem)
 - Repositório no GitHub com o código
+- API Key do Asaas (produção)
 
-## 🎯 Opção 1: Render (Recomendado)
+## 🎯 Netlify (Frontend + Backend) - RECOMENDADO
+
+### Configuração Completa:
+
+1. **Push para GitHub** (se ainda não fez)
+2. **Acesse [netlify.com](https://netlify.com)**
+3. **New site from Git**
+4. **Conecte seu repositório GitHub**
+5. **Configure o build:**
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Functions directory: `netlify/functions`
+
+6. **Configure as Variáveis de Ambiente no Netlify:**
+   ```
+   NODE_ENV=production
+   ASAAS_API_KEY=sua_chave_de_producao_real
+   ASAAS_API_URL=https://api.asaas.com/v3
+   ```
+
+7. **Deploy automático!**
+
+### ✅ Resultado:
+- Frontend: `https://seu-app.netlify.app`
+- Backend: `https://seu-app.netlify.app/api/*`
+- Deploy automático a cada push
+- SSL gratuito
+- Serverless functions
+- 125k requests/mês grátis
+
+---
 
 ### Passo a Passo:
 

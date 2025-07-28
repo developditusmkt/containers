@@ -5,7 +5,25 @@ import { createPaymentLinkMock } from './asaasMockService';
  * Serviço para integração com Asaas via backend usando estrutura CURL validada
  */
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+// Detecção automática do ambiente
+const getBackendUrl = () => {
+  // Se estiver no Netlify, usar as functions
+  if (window.location.hostname.includes('netlify')) {
+    return window.location.origin; // Usa o mesmo domínio
+  }
+  
+  // Variável de ambiente customizada
+  if (import.meta.env.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
+  
+  // Desenvolvimento local
+  return 'http://localhost:3001';
+};
+
+const BACKEND_URL = getBackendUrl();
+
+console.log('🔗 Backend URL detectada:', BACKEND_URL);
 
 /**
  * Cria link de pagamento usando integração inteligente via backend
