@@ -1,53 +1,78 @@
-/**
- * Netlify Function para Backend do Sistema Alencar
- * Integração com API do Asaas via Netlify Serverless Functions
- */
+import axios from 'axios';
 
-import express from 'express';
-import cors from 'cors';
-import serverless from 'serverless-http';
-import dotenv from 'dotenv';
-
-// Carregar variáveis de ambiente
-dotenv.config();
-
-// Importar rotas do backend (ajustar path relativo)
-const createAsaasRoutes = () => {
-  const router = express.Router();
+export const handler = async (event, context) => {
+  console.log('🚀 Netlify Function chamada:', event.path, event.httpMethod);
   
-  // Health check
-  router.get('/health', (req, res) => {
-    res.json({
-      success: true,
-      message: 'Backend Alencar Orçamentos - Netlify Functions',
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development'
-    });
-  });
-  
-  // Middleware para validar API key
-  const validateApiKey = (req, res, next) => {
-    if (!process.env.ASAAS_API_KEY) {
-      return res.status(503).json({
-        success: false,
-        error: {
-          message: 'API Key do Asaas não configurada',
-          code: 'ASAAS_NOT_CONFIGURED'
-        }
-      });
-    }
-    next();
+  // Headers CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, access_token',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json'
   };
-  
-  // Endpoint para criar payment links
-  router.post('/asaas/payment-links', validateApiKey, async (req, res) => {
-    try {
-      console.log('🎯 Criando payment link via Netlify Function');
+
+  // Handle preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  try {
+    const path = event.path.replace('/.netlify/functions/api', '');
+    console.log('📍 Path processado:', path);
+    
+    // Health check
+    if (path === '/health' || path === '' || path === '/') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          message: 'Backend Alencar Orçamentos - Netlify Functions',
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV || 'development',
+          apiKeyConfigured: !!process.env.ASAAS_API_KEY,
+          receivedPath: path,
+          originalPath: event.path
+        })
+      };
+    }
+
+    // Payment links endpoint
+    if (path === '/asaas/payment-links' && event.httpMethod === 'POST') {
+      console.log('🎯 Criando payment link');
       
-      const paymentData = req.body;
+      if (!process.env.ASAAS_API_KEY) {
+        return {
+          statusCode: 503,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: {
+              message: 'API Key do Asaas não configurada',
+              code: 'ASAAS_NOT_CONFIGURED'
+            }
+          })
+        };
+      }
+
+      if (!event.body) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Body da requisição não encontrado'
+          })
+        };
+      }
+
+      const paymentData = JSON.parse(event.body);
       
-      // Importar dinamicamente o axios para evitar problemas de ES modules
-      const axios = (await import('axios')).default;
+      console.log('📋 Dados para Asaas:', paymentData);
       
       const response = await axios.post(
         'https://api-sandbox.asaas.com/v3/paymentLinks',
@@ -55,43 +80,50 @@ const createAsaasRoutes = () => {
         {
           headers: {
             'Content-Type': 'application/json',
-            'access_token': process.env.ASAAS_API_KEY
+            'access_token': process.env.ASAAS_API_KEY.replace(/"/g, '') // Remove aspas se houver
           }
         }
       );
       
-      res.status(201).json({
-        success: true,
-        data: response.data
-      });
+      console.log('✅ Response Asaas:', response.data);
       
-    } catch (error) {
-      console.error('Erro na API Asaas:', error.response?.data || error.message);
-      
-      res.status(500).json({
-        success: false,
-        error: error.response?.data || { message: error.message }
-      });
+      return {
+        statusCode: 201,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          data: response.data
+        })
+      };
     }
-  });
-  
-  return router;
+
+    // Endpoint não encontrado
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({
+        success: false,
+        error: `Endpoint não encontrado: ${path}`,
+        availableEndpoints: ['/health', '/asaas/payment-links'],
+        receivedMethod: event.httpMethod,
+        receivedPath: path
+      })
+    };
+
+  } catch (error) {
+    console.error('💥 Erro na function:', error);
+    
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        success: false,
+        error: {
+          message: error.response?.data?.description || error.message,
+          details: error.response?.data || 'Erro interno',
+          asaasError: error.response?.data
+        }
+      })
+    };
+  }
 };
-
-// Criar app Express
-const app = express();
-
-// CORS configurado
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
-
-// Parse JSON
-app.use(express.json());
-
-// Usar as rotas
-app.use('/', createAsaasRoutes());
-
-// Converter Express app para Netlify Function
-export const handler = serverless(app);
