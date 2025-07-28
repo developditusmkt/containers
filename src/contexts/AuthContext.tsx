@@ -8,6 +8,9 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isLoading: boolean;
   createUser: (email: string, password: string, name: string, role?: 'admin' | 'user') => Promise<{ success: boolean; error?: string }>;
+  getAllUsers: () => Promise<{ success: boolean; users?: User[]; error?: string }>;
+  deleteUser: (userId: string) => Promise<{ success: boolean; error?: string }>;
+  sendPasswordResetEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -119,8 +122,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const getAllUsers = async (): Promise<{ success: boolean; users?: User[]; error?: string }> => {
+    try {
+      // No Supabase, usar admin API para listar usuários
+      const { data, error } = await supabase.auth.admin.listUsers();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      const users: User[] = data.users.map(supabaseUser => ({
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || 'Usuário',
+        email: supabaseUser.email || '',
+        role: (supabaseUser.user_metadata?.role as 'admin' | 'user') || 'user',
+      }));
+
+      return { success: true, users };
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar usuários' };
+    }
+  };
+
+  const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro ao excluir usuário' };
+    }
+  };
+
+  const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro ao enviar email de redefinição' };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, createUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      isLoading, 
+      createUser,
+      getAllUsers,
+      deleteUser,
+      sendPasswordResetEmail
+    }}>
       {children}
     </AuthContext.Provider>
   );

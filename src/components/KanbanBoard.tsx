@@ -2,18 +2,90 @@ import React, { useState, useEffect } from 'react';
 import { Quote } from '../types';
 import { useQuotes } from '../contexts/QuoteContext';
 import { formatCurrency, formatDate, formatPhone } from '../utils/formatters';
-import { User, Phone, Mail, DollarSign, Calendar, Eye } from 'lucide-react';
+import { User, Phone, Mail, DollarSign, Calendar, Eye, RefreshCw, MoreVertical, Clock } from 'lucide-react';
 
 const KANBAN_COLUMNS = [
-  { id: 'new', title: 'Novos', color: 'bg-blue-100 border-blue-300' },
-  { id: 'analyzing', title: 'Analisando', color: 'bg-yellow-100 border-yellow-300' },
-  { id: 'negotiating', title: 'Negociando', color: 'bg-orange-100 border-orange-300' },
-  { id: 'awaiting-signature', title: 'Aguardando Assinatura', color: 'bg-purple-100 border-purple-300' },
-  { id: 'approved', title: 'Aprovado', color: 'bg-green-100 border-green-300' },
-  { id: 'awaiting-payment', title: 'Aguardando Pagamento', color: 'bg-indigo-100 border-indigo-300' },
-  { id: 'paid', title: 'Pago', color: 'bg-emerald-100 border-emerald-300' },
-  { id: 'rejected', title: 'Rejeitado', color: 'bg-red-100 border-red-300' },
-  { id: 'completed', title: 'Concluído', color: 'bg-gray-100 border-gray-300' },
+  { 
+    id: 'new', 
+    title: 'Novos', 
+    gradient: 'from-blue-500 to-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    textColor: 'text-blue-700',
+    count: 0
+  },
+  { 
+    id: 'analyzing', 
+    title: 'Analisando', 
+    gradient: 'from-amber-500 to-yellow-500',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-200',
+    textColor: 'text-amber-700',
+    count: 0
+  },
+  { 
+    id: 'negotiating', 
+    title: 'Negociando', 
+    gradient: 'from-orange-500 to-red-500',
+    bgColor: 'bg-orange-50',
+    borderColor: 'border-orange-200',
+    textColor: 'text-orange-700',
+    count: 0
+  },
+  { 
+    id: 'awaiting-signature', 
+    title: 'Aguardando Assinatura', 
+    gradient: 'from-purple-500 to-indigo-500',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    textColor: 'text-purple-700',
+    count: 0
+  },
+  { 
+    id: 'approved', 
+    title: 'Aprovado', 
+    gradient: 'from-green-500 to-emerald-500',
+    bgColor: 'bg-green-50',
+    borderColor: 'border-green-200',
+    textColor: 'text-green-700',
+    count: 0
+  },
+  { 
+    id: 'awaiting-payment', 
+    title: 'Aguardando Pagamento', 
+    gradient: 'from-indigo-500 to-blue-500',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    textColor: 'text-indigo-700',
+    count: 0
+  },
+  { 
+    id: 'paid', 
+    title: 'Pago', 
+    gradient: 'from-emerald-500 to-teal-500',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+    textColor: 'text-emerald-700',
+    count: 0
+  },
+  { 
+    id: 'rejected', 
+    title: 'Rejeitado', 
+    gradient: 'from-red-500 to-pink-500',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+    textColor: 'text-red-700',
+    count: 0
+  },
+  { 
+    id: 'completed', 
+    title: 'Concluído', 
+    gradient: 'from-gray-500 to-slate-500',
+    bgColor: 'bg-gray-50',
+    borderColor: 'border-gray-200',
+    textColor: 'text-gray-700',
+    count: 0
+  },
 ];
 
 interface QuoteCardProps {
@@ -23,54 +95,89 @@ interface QuoteCardProps {
 }
 
 const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onViewDetails, onDragStart }) => {
+  const getDaysSinceCreated = (date: string) => {
+    const created = new Date(date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const daysSince = getDaysSinceCreated(quote.createdAt);
+  const isUrgent = daysSince > 7;
+
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, quote)}
-      className="bg-white rounded-lg shadow-md p-4 mb-3 border-l-4 border-[#44A17C] cursor-move hover:shadow-lg transition-shadow"
+      className="bg-white rounded-xl shadow-md p-4 mb-3 border-l-4 border-[#44A17C] cursor-move hover:shadow-lg transition-all duration-200 group relative overflow-hidden backdrop-blur-sm"
     >
+      {/* Urgency indicator */}
+      {isUrgent && (
+        <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-medium">
+          <Clock className="w-3 h-3" />
+          {daysSince}d
+        </div>
+      )}
+
+      {/* Customer Info */}
       <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center">
-          <User className="h-4 w-4 text-gray-500 mr-2" />
-          <h3 className="font-semibold text-gray-900 text-sm truncate">
-            {quote.customer.name}
-          </h3>
+        <div className="flex items-center flex-1 min-w-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-[#44A17C] to-[#3e514f] rounded-full flex items-center justify-center shadow-sm mr-3">
+            <User className="h-4 w-4 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 text-sm truncate">
+              {quote.customer.name}
+            </h3>
+            <p className="text-xs text-gray-500">#{quote.id}</p>
+          </div>
         </div>
         <button
           onClick={() => onViewDetails(quote)}
-          className="text-[#44A17C] hover:text-[#3e514f] p-1 rounded"
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-[#44A17C] hover:text-[#3e514f] p-2 rounded-full hover:bg-gray-50"
           title="Ver detalhes"
         >
           <Eye className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="space-y-2 text-xs text-gray-600">
-        <div className="flex items-center">
-          <Phone className="h-3 w-3 mr-2" />
-          <span className="truncate">{formatPhone(quote.customer.phone)}</span>
+      {/* Contact & Value Info */}
+      <div className="space-y-2 mb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center text-xs text-gray-600">
+            <Phone className="h-3 w-3 mr-2 text-gray-400" />
+            <span className="truncate">{formatPhone(quote.customer.phone)}</span>
+          </div>
+          <div className="flex items-center text-sm font-semibold text-[#44A17C]">
+            <DollarSign className="h-4 w-4 mr-1" />
+            {formatCurrency(quote.totalPrice)}
+          </div>
         </div>
-        <div className="flex items-center">
-          <Mail className="h-3 w-3 mr-2" />
+        
+        <div className="flex items-center text-xs text-gray-600">
+          <Mail className="h-3 w-3 mr-2 text-gray-400" />
           <span className="truncate">{quote.customer.email}</span>
         </div>
-        <div className="flex items-center">
-          <DollarSign className="h-3 w-3 mr-2" />
-          <span className="font-semibold text-[#44A17C]">
-            {formatCurrency(quote.totalPrice)}
-          </span>
-        </div>
-        <div className="flex items-center">
-          <Calendar className="h-3 w-3 mr-2" />
+        
+        <div className="flex items-center text-xs text-gray-600">
+          <Calendar className="h-3 w-3 mr-2 text-gray-400" />
           <span>{formatDate(quote.createdAt)}</span>
         </div>
       </div>
 
-      <div className="mt-3 pt-2 border-t border-gray-100">
+      {/* Footer Info */}
+      <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
         <div className="text-xs text-gray-500">
-          {quote.selectedItems.length} itens • {quote.customer.city}/{quote.customer.state}
+          {quote.selectedItems.length} itens
+        </div>
+        <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+          {quote.customer.city}/{quote.customer.state}
         </div>
       </div>
+
+      {/* Hover effect overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#44A17C] opacity-0 group-hover:opacity-5 transition-opacity pointer-events-none rounded-xl"></div>
     </div>
   );
 };
@@ -136,46 +243,73 @@ export const KanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Kanban de Orçamentos</h2>
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Kanban de Orçamentos</h2>
+          <p className="text-gray-600">Acompanhe o status dos seus orçamentos em tempo real</p>
+        </div>
         <button
           onClick={refreshQuotes}
-          className="bg-[#44A17C] text-white px-4 py-2 rounded-lg hover:bg-[#3e514f] transition-colors"
+          className="bg-gradient-to-r from-[#44A17C] to-[#3e514f] text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center gap-2 font-medium"
         >
+          <RefreshCw className="w-4 h-4" />
           Atualizar
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 overflow-x-auto">
+      {/* Modern horizontal scroll layout */}
+      <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {KANBAN_COLUMNS.map((column) => {
           const columnQuotes = getQuotesByStatus(column.id);
           
           return (
-            <div key={column.id} className="min-w-[280px]">
+            <div key={column.id} className="min-w-[320px] flex-shrink-0">
               <div 
-                className={`rounded-lg border-2 ${column.color} p-4 min-h-[400px]`}
+                className={`${column.bgColor} ${column.borderColor} rounded-2xl border-2 p-5 min-h-[500px] backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-200`}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-900 text-sm">
-                    {column.title}
-                  </h3>
-                  <span className="bg-white text-gray-600 text-xs px-2 py-1 rounded-full">
-                    {columnQuotes.length}
-                  </span>
+                {/* Column Header */}
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${column.gradient}`}></div>
+                    <h3 className={`font-bold text-sm ${column.textColor}`}>
+                      {column.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`${column.textColor} text-xs font-semibold px-3 py-1 rounded-full bg-white shadow-sm`}>
+                      {columnQuotes.length}
+                    </span>
+                    <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-white rounded-full">
+                      <MoreVertical className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  {columnQuotes.map((quote) => (
-                    <QuoteCard
-                      key={quote.id}
-                      quote={quote}
-                      onViewDetails={handleViewDetails}
-                      onDragStart={handleDragStart}
-                    />
-                  ))}
+                {/* Quote Cards */}
+                <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+                  {columnQuotes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 mb-2">
+                        <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 text-sm">Nenhum orçamento</p>
+                    </div>
+                  ) : (
+                    columnQuotes.map((quote) => (
+                      <QuoteCard
+                        key={quote.id}
+                        quote={quote}
+                        onViewDetails={handleViewDetails}
+                        onDragStart={handleDragStart}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
             </div>

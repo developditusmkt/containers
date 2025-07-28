@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { UserPlus, Users, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Users, Eye, EyeOff, CheckCircle, XCircle, Trash2, Mail, RotateCcw, AlertTriangle, Shield, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { User } from '../types';
 
 export const UserManagement: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -10,9 +11,33 @@ export const UserManagement: React.FC = () => {
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  const { createUser } = useAuth();
+  const { createUser, getAllUsers, deleteUser, sendPasswordResetEmail } = useAuth();
+
+  // Carregar usuários ao montar o componente
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const result = await getAllUsers();
+      if (result.success && result.users) {
+        setUsers(result.users);
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Erro ao carregar usuários' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erro ao carregar usuários' });
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +55,47 @@ export const UserManagement: React.FC = () => {
         setName('');
         setRole('user');
         setShowCreateForm(false);
+        // Recarregar lista de usuários
+        loadUsers();
       } else {
         setMessage({ type: 'error', text: result.error || 'Erro ao criar usuário' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Erro ao criar usuário. Tente novamente.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    setIsLoading(true);
+    try {
+      const result = await deleteUser(userId);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Usuário excluído com sucesso!' });
+        loadUsers();
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Erro ao excluir usuário' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erro ao excluir usuário' });
+    } finally {
+      setIsLoading(false);
+      setShowDeleteConfirm(null);
+    }
+  };
+
+  const handleSendPasswordReset = async (email: string) => {
+    setIsLoading(true);
+    try {
+      const result = await sendPasswordResetEmail(email);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Email de redefinição enviado com sucesso!' });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Erro ao enviar email' });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erro ao enviar email de redefinição' });
     } finally {
       setIsLoading(false);
     }
@@ -180,14 +241,159 @@ export const UserManagement: React.FC = () => {
         </div>
       )}
 
-      <div className="border rounded-lg p-4">
-        <h3 className="text-lg font-medium text-[#3e514f] mb-4">Usuários Existentes</h3>
-        <div className="text-gray-500 text-center py-8">
-          <Users size={48} className="mx-auto mb-2 opacity-50" />
-          <p>Lista de usuários será implementada aqui</p>
-          <p className="text-sm">Conecte-se ao Supabase para ver os usuários existentes</p>
+      {/* Lista de Usuários */}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-[#3e514f] flex items-center gap-2">
+              <Users size={20} />
+              Usuários Cadastrados ({users.length})
+            </h3>
+            <button
+              onClick={loadUsers}
+              disabled={isLoadingUsers}
+              className="flex items-center gap-2 text-[#44A17C] hover:text-[#3a8d6a] transition-colors disabled:opacity-50"
+            >
+              <RotateCcw size={16} className={isLoadingUsers ? 'animate-spin' : ''} />
+              Atualizar
+            </button>
+          </div>
         </div>
+
+        {isLoadingUsers ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#44A17C] mx-auto mb-4"></div>
+            <p className="text-gray-500">Carregando usuários...</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="p-8 text-center">
+            <Users size={48} className="mx-auto mb-4 text-gray-300" />
+            <p className="text-gray-500 mb-2">Nenhum usuário encontrado</p>
+            <p className="text-sm text-gray-400">Crie o primeiro usuário usando o botão acima</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Usuário
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    E-mail
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Função
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[#44A17C] to-[#3e514f] rounded-full flex items-center justify-center">
+                          <UserIcon className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                          <div className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}...</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        user.role === 'admin' 
+                          ? 'bg-purple-100 text-purple-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {user.role === 'admin' ? <Shield size={12} /> : <UserIcon size={12} />}
+                        {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleSendPasswordReset(user.email)}
+                          disabled={isLoading}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 text-xs"
+                          title="Reenviar link de redefinição de senha"
+                        >
+                          <Mail size={14} />
+                          Reset Senha
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(user.id)}
+                          disabled={isLoading}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 text-xs"
+                          title="Excluir usuário"
+                        >
+                          <Trash2 size={14} />
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirmar Exclusão</h3>
+                <p className="text-sm text-gray-500">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Tem certeza que deseja excluir este usuário? Todos os dados relacionados serão perdidos permanentemente.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={isLoading}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleDeleteUser(showDeleteConfirm)}
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Excluindo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Excluir
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
