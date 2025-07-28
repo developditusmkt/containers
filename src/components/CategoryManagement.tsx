@@ -6,12 +6,9 @@ import {
   Save, 
   X, 
   Package, 
-  DollarSign,
-  RefreshCw,
-  AlertTriangle
+  DollarSign
 } from 'lucide-react';
 import { useCategories } from '../contexts/CategoryContext';
-import { Category, Item } from '../types';
 import { formatCurrency } from '../utils/formatters';
 
 export const CategoryManagement: React.FC = () => {
@@ -23,7 +20,9 @@ export const CategoryManagement: React.FC = () => {
     addItemToCategory, 
     updateItem, 
     deleteItem,
-    resetToDefaults
+    // isLoading,
+    // error,
+    // refreshCategories
   } = useCategories();
 
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
@@ -36,55 +35,51 @@ export const CategoryManagement: React.FC = () => {
   });
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddItem, setShowAddItem] = useState<string | null>(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (newCategory.name.trim()) {
-      const category: Category = {
-        id: Date.now().toString(),
-        name: newCategory.name.trim(),
-        items: []
-      };
-      addCategory(category);
-      setNewCategory({ name: '' });
-      setShowAddCategory(false);
+      try {
+        await addCategory(newCategory.name.trim());
+        setNewCategory({ name: '' });
+        setShowAddCategory(false);
+      } catch (error) {
+        console.error('Erro ao adicionar categoria:', error);
+      }
     }
   };
 
-  const handleAddItem = (categoryId: string) => {
+  const handleAddItem = async (categoryId: string) => {
     if (newItem.name.trim() && newItem.price.trim()) {
-      const item: Item = {
-        id: Date.now().toString(),
-        name: newItem.name.trim(),
-        price: parseFloat(newItem.price),
-        category: categories.find(c => c.id === categoryId)?.name || ''
-      };
-      addItemToCategory(categoryId, item);
-      setNewItem({ categoryId: '', name: '', price: '' });
-      setShowAddItem(null);
+      try {
+        await addItemToCategory(categoryId, newItem.name.trim(), parseFloat(newItem.price));
+        setNewItem({ categoryId: '', name: '', price: '' });
+        setShowAddItem(null);
+      } catch (error) {
+        console.error('Erro ao adicionar item:', error);
+      }
     }
   };
 
-  const handleUpdateCategory = (categoryId: string, name: string) => {
+  const handleUpdateCategory = async (categoryId: string, name: string) => {
     if (name.trim()) {
-      updateCategory(categoryId, { name: name.trim() });
-      setEditingCategory(null);
+      try {
+        await updateCategory(categoryId, name.trim());
+        setEditingCategory(null);
+      } catch (error) {
+        console.error('Erro ao atualizar categoria:', error);
+      }
     }
   };
 
-  const handleUpdateItem = (categoryId: string, itemId: string, name: string, price: string) => {
+  const handleUpdateItem = async (itemId: string, name: string, price: string) => {
     if (name.trim() && price.trim()) {
-      updateItem(categoryId, itemId, { 
-        name: name.trim(), 
-        price: parseFloat(price) 
-      });
-      setEditingItem(null);
+      try {
+        await updateItem(itemId, name.trim(), parseFloat(price));
+        setEditingItem(null);
+      } catch (error) {
+        console.error('Erro ao atualizar item:', error);
+      }
     }
-  };
-
-  const handleReset = () => {
-    resetToDefaults();
-    setShowResetConfirm(false);
   };
 
   return (
@@ -96,13 +91,6 @@ export const CategoryManagement: React.FC = () => {
           <p className="text-gray-600">Configure os itens disponíveis na calculadora</p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => setShowResetConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-          >
-            <RefreshCw size={16} />
-            Restaurar Padrão
-          </button>
           <button
             onClick={() => setShowAddCategory(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#44A17C] text-white rounded-lg hover:bg-[#3e514f] transition-colors"
@@ -137,36 +125,6 @@ export const CategoryManagement: React.FC = () => {
                   setShowAddCategory(false);
                   setNewCategory({ name: '' });
                 }}
-                className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="text-orange-600" size={24} />
-              <h3 className="text-lg font-semibold">Confirmar Restauração</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Tem certeza que deseja restaurar as categorias e itens para os valores padrão? 
-              Todas as alterações personalizadas serão perdidas.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={handleReset}
-                className="flex-1 bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition-colors"
-              >
-                Restaurar
-              </button>
-              <button
-                onClick={() => setShowResetConfirm(false)}
                 className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
               >
                 Cancelar
@@ -318,7 +276,7 @@ export const CategoryManagement: React.FC = () => {
                           const nameInput = document.getElementById(`item-name-${item.id}`) as HTMLInputElement;
                           const priceInput = document.getElementById(`item-price-${item.id}`) as HTMLInputElement;
                           if (nameInput && priceInput) {
-                            handleUpdateItem(category.id, item.id, nameInput.value, priceInput.value);
+                            handleUpdateItem(item.id, nameInput.value, priceInput.value);
                           }
                         }}
                         className="text-green-600 hover:text-green-800"
@@ -349,7 +307,7 @@ export const CategoryManagement: React.FC = () => {
                           <Edit2 size={14} />
                         </button>
                         <button
-                          onClick={() => deleteItem(category.id, item.id)}
+                          onClick={() => deleteItem(item.id)}
                           className="text-red-600 hover:text-red-800 p-1"
                           title="Excluir item"
                         >

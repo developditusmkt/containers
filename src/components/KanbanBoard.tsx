@@ -1,87 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  Calendar,
-  DollarSign,
-  User,
-  Phone,
-  Mail,
-  X
-} from 'lucide-react';
-import { useQuotes } from '../contexts/QuoteContext';
 import { Quote } from '../types';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { useQuotes } from '../contexts/QuoteContext';
+import { formatCurrency, formatDate, formatPhone } from '../utils/formatters';
+import { User, Phone, Mail, DollarSign, Calendar, Eye } from 'lucide-react';
 
-const KANBAN_STATUSES = [
-  { key: 'new', label: 'Novo', color: 'bg-blue-100 border-blue-300' },
-  { key: 'analyzing', label: 'Em Análise', color: 'bg-yellow-100 border-yellow-300' },
-  { key: 'negotiating', label: 'Em Negociação', color: 'bg-purple-100 border-purple-300' },
-  { key: 'awaiting-signature', label: 'Aguardando Assinatura', color: 'bg-orange-100 border-orange-300' },
-  { key: 'approved', label: 'Aprovado', color: 'bg-green-100 border-green-300' },
-  { key: 'awaiting-payment', label: 'Aguardando Pagamento', color: 'bg-indigo-100 border-indigo-300' },
-  { key: 'paid', label: 'Pagamento Efetuado', color: 'bg-emerald-100 border-emerald-300' },
-  { key: 'rejected', label: 'Recusado', color: 'bg-red-100 border-red-300' },
-  { key: 'completed', label: 'Finalizado', color: 'bg-gray-100 border-gray-300' },
-] as const;
+const KANBAN_COLUMNS = [
+  { id: 'new', title: 'Novos', color: 'bg-blue-100 border-blue-300' },
+  { id: 'analyzing', title: 'Analisando', color: 'bg-yellow-100 border-yellow-300' },
+  { id: 'negotiating', title: 'Negociando', color: 'bg-orange-100 border-orange-300' },
+  { id: 'awaiting-signature', title: 'Aguardando Assinatura', color: 'bg-purple-100 border-purple-300' },
+  { id: 'approved', title: 'Aprovado', color: 'bg-green-100 border-green-300' },
+  { id: 'awaiting-payment', title: 'Aguardando Pagamento', color: 'bg-indigo-100 border-indigo-300' },
+  { id: 'paid', title: 'Pago', color: 'bg-emerald-100 border-emerald-300' },
+  { id: 'rejected', title: 'Rejeitado', color: 'bg-red-100 border-red-300' },
+  { id: 'completed', title: 'Concluído', color: 'bg-gray-100 border-gray-300' },
+];
 
-interface KanbanBoardProps {
-  onQuoteSelect: (quote: Quote) => void;
+interface QuoteCardProps {
+  quote: Quote;
+  onViewDetails: (quote: Quote) => void;
+  onDragStart: (e: React.DragEvent, quote: Quote) => void;
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onQuoteSelect }) => {
-  const { quotes, updateQuote } = useQuotes();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
+const QuoteCard: React.FC<QuoteCardProps> = ({ quote, onViewDetails, onDragStart }) => {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, quote)}
+      className="bg-white rounded-lg shadow-md p-4 mb-3 border-l-4 border-[#44A17C] cursor-move hover:shadow-lg transition-shadow"
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center">
+          <User className="h-4 w-4 text-gray-500 mr-2" />
+          <h3 className="font-semibold text-gray-900 text-sm truncate">
+            {quote.customer.name}
+          </h3>
+        </div>
+        <button
+          onClick={() => onViewDetails(quote)}
+          className="text-[#44A17C] hover:text-[#3e514f] p-1 rounded"
+          title="Ver detalhes"
+        >
+          <Eye className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="space-y-2 text-xs text-gray-600">
+        <div className="flex items-center">
+          <Phone className="h-3 w-3 mr-2" />
+          <span className="truncate">{formatPhone(quote.customer.phone)}</span>
+        </div>
+        <div className="flex items-center">
+          <Mail className="h-3 w-3 mr-2" />
+          <span className="truncate">{quote.customer.email}</span>
+        </div>
+        <div className="flex items-center">
+          <DollarSign className="h-3 w-3 mr-2" />
+          <span className="font-semibold text-[#44A17C]">
+            {formatCurrency(quote.totalPrice)}
+          </span>
+        </div>
+        <div className="flex items-center">
+          <Calendar className="h-3 w-3 mr-2" />
+          <span>{formatDate(quote.createdAt)}</span>
+        </div>
+      </div>
+
+      <div className="mt-3 pt-2 border-t border-gray-100">
+        <div className="text-xs text-gray-500">
+          {quote.selectedItems.length} itens • {quote.customer.city}/{quote.customer.state}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const KanbanBoard: React.FC = () => {
+  const { quotes, updateQuote, refreshQuotes } = useQuotes();
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const [draggedQuote, setDraggedQuote] = useState<Quote | null>(null);
 
-  // Map old status values to new kanban status values
-  const mapStatusToKanban = (status: Quote['status']): string => {
-    switch (status) {
-      case 'pending': return 'new';
-      case 'analyzing': return 'analyzing';
-      case 'approved': return 'approved';
-      case 'negotiating': return 'negotiating';
-      case 'signed': return 'completed';
-      default: return 'new';
-    }
-  };
+  useEffect(() => {
+    refreshQuotes();
+  }, []);
 
-  const filteredQuotes = quotes.filter(quote => {
-    const matchesSearch = 
-      quote.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.customer.phone.includes(searchTerm) ||
-      quote.customer.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const kanbanStatus = mapStatusToKanban(quote.status);
-    const matchesStatus = statusFilter === 'all' || kanbanStatus === statusFilter;
-    
-    let matchesDate = true;
-    if (dateFilter !== 'all') {
-      const quoteDate = new Date(quote.createdAt);
-      const today = new Date();
-      const daysDiff = Math.floor((today.getTime() - quoteDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      switch (dateFilter) {
-        case 'today':
-          matchesDate = daysDiff === 0;
-          break;
-        case 'week':
-          matchesDate = daysDiff <= 7;
-          break;
-        case 'month':
-          matchesDate = daysDiff <= 30;
-          break;
-      }
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate;
-  });
-
-  const getQuotesByStatus = (status: string) => {
-    return filteredQuotes.filter(quote => mapStatusToKanban(quote.status) === status);
+  const getQuotesByStatus = (status: string): Quote[] => {
+    return quotes.filter(quote => quote.status === status);
   };
 
   const handleDragStart = (e: React.DragEvent, quote: Quote) => {
@@ -94,198 +99,178 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onQuoteSelect }) => {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+    const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
-    if (draggedQuote) {
-      // Map kanban status back to quote status
-      let quoteStatus: Quote['status'];
-      switch (newStatus) {
-        case 'new': quoteStatus = 'pending'; break;
-        case 'analyzing': quoteStatus = 'analyzing'; break;
-        case 'negotiating': quoteStatus = 'negotiating'; break;
-        case 'approved': quoteStatus = 'approved'; break;
-        case 'completed': quoteStatus = 'signed'; break;
-        default: quoteStatus = 'pending';
+    e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
+    
+    if (draggedQuote && draggedQuote.status !== newStatus) {
+      try {
+        await updateQuote(draggedQuote.id, { 
+          status: newStatus as Quote['status'] 
+        });
+      } catch (error) {
+        console.error('Erro ao atualizar status do kanban:', error);
       }
-      
-      updateQuote(draggedQuote.id, { status: quoteStatus });
-      setDraggedQuote(null);
     }
-  };
-
-  const handleDragEnd = () => {
     setDraggedQuote(null);
   };
 
+  const handleViewDetails = (quote: Quote) => {
+    setSelectedQuote(quote);
+    setShowModal(true);
+  };
+
+    const getStatusColor = (status: Quote['status']) => {
+    const colors = {
+      'new': 'bg-blue-100 text-blue-800',
+      'analyzing': 'bg-yellow-100 text-yellow-800',
+      'negotiating': 'bg-orange-100 text-orange-800',
+      'awaiting-signature': 'bg-purple-100 text-purple-800',
+      'approved': 'bg-green-100 text-green-800',
+      'awaiting-payment': 'bg-indigo-100 text-indigo-800',
+      'paid': 'bg-emerald-100 text-emerald-800',
+      'rejected': 'bg-red-100 text-red-800',
+      'completed': 'bg-gray-100 text-gray-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-[#3e514f]">Visão Kanban</h2>
-          <p className="text-gray-600">Gerencie orçamentos por status</p>
-        </div>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Kanban de Orçamentos</h2>
+        <button
+          onClick={refreshQuotes}
+          className="bg-[#44A17C] text-white px-4 py-2 rounded-lg hover:bg-[#3e514f] transition-colors"
+        >
+          Atualizar
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Buscar por nome, telefone ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
-            >
-              <option value="all">Todos os Status</option>
-              {KANBAN_STATUSES.map(status => (
-                <option key={status.key} value={status.key}>{status.label}</option>
-              ))}
-            </select>
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
-            >
-              <option value="all">Todos os Períodos</option>
-              <option value="today">Hoje</option>
-              <option value="week">Última Semana</option>
-              <option value="month">Último Mês</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Kanban Board */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {KANBAN_STATUSES.map((status) => {
-            const statusQuotes = getQuotesByStatus(status.key);
-            
-            return (
-              <div
-                key={status.key}
-                className="flex-shrink-0 w-80"
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 overflow-x-auto">
+        {KANBAN_COLUMNS.map((column) => {
+          const columnQuotes = getQuotesByStatus(column.id);
+          
+          return (
+            <div key={column.id} className="min-w-[280px]">
+              <div 
+                className={`rounded-lg border-2 ${column.color} p-4 min-h-[400px]`}
                 onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, status.key)}
+                onDrop={(e) => handleDrop(e, column.id)}
               >
-                {/* Column Header */}
-                <div className={`p-3 rounded-t-lg border-2 ${status.color}`}>
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-gray-800">{status.label}</h3>
-                    <span className="bg-white px-2 py-1 rounded-full text-sm font-medium">
-                      {statusQuotes.length}
-                    </span>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {column.title}
+                  </h3>
+                  <span className="bg-white text-gray-600 text-xs px-2 py-1 rounded-full">
+                    {columnQuotes.length}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {columnQuotes.map((quote) => (
+                    <QuoteCard
+                      key={quote.id}
+                      quote={quote}
+                      onViewDetails={handleViewDetails}
+                      onDragStart={handleDragStart}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Modal de detalhes */}
+      {showModal && selectedQuote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Detalhes do Orçamento - {selectedQuote.customer.name}
+                </h3>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Dados do Cliente */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Dados do Cliente</h4>
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Nome:</strong> {selectedQuote.customer.name}</p>
+                    <p><strong>Telefone:</strong> {formatPhone(selectedQuote.customer.phone)}</p>
+                    <p><strong>E-mail:</strong> {selectedQuote.customer.email}</p>
+                    <p><strong>CEP:</strong> {selectedQuote.customer.cep}</p>
+                    <p><strong>Endereço:</strong> {selectedQuote.customer.address}</p>
+                    <p><strong>Cidade/Estado:</strong> {selectedQuote.customer.city}/{selectedQuote.customer.state}</p>
+                    <p><strong>Data do Projeto:</strong> {formatDate(selectedQuote.customer.projectDate)}</p>
+                    <p><strong>Finalidade:</strong> {selectedQuote.customer.purpose.join(', ')}</p>
                   </div>
                 </div>
 
-                {/* Column Content */}
-                <div className="border-2 border-t-0 border-gray-200 rounded-b-lg min-h-[500px] p-3 space-y-3 bg-gray-50">
-                  {statusQuotes.map((quote) => (
-                    <div
-                      key={quote.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, quote)}
-                      onDragEnd={handleDragEnd}
-                      className={`bg-white rounded-lg shadow-sm border p-4 cursor-move hover:shadow-md transition-shadow ${
-                        draggedQuote?.id === quote.id ? 'opacity-50' : ''
-                      }`}
-                    >
-                      {/* Quote Card Header */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 truncate">
-                            {quote.customer.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                            <Calendar size={12} />
-                            {formatDate(quote.createdAt)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => onQuoteSelect(quote)}
-                          className="text-[#44A17C] hover:text-[#3e514f] p-1"
-                          title="Ver detalhes"
-                        >
-                          <Eye size={16} />
-                        </button>
-                      </div>
+                {/* Dados do Orçamento */}
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900">Dados do Orçamento</h4>
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Valor Base:</strong> {formatCurrency(selectedQuote.basePrice)}</p>
+                    <p><strong>Valor Total:</strong> {formatCurrency(selectedQuote.totalPrice)}</p>
+                    <p><strong>Status:</strong> 
+                      <span className={`ml-2 px-2 py-1 rounded-full text-xs ${getStatusColor(selectedQuote.status)}`}>
+                        {selectedQuote.status}
+                      </span>
+                    </p>
+                    <p><strong>Data de Criação:</strong> {formatDate(selectedQuote.createdAt)}</p>
+                  </div>
+                </div>
 
-                      {/* Quote Details */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone size={12} />
-                          <span className="truncate">{quote.customer.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Mail size={12} />
-                          <span className="truncate">{quote.customer.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-lg font-bold text-[#44A17C] mt-3">
-                          <DollarSign size={16} />
-                          <span>{formatCurrency(quote.totalPrice)}</span>
-                        </div>
-                      </div>
-
-                      {/* Quote Items Count */}
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <p className="text-xs text-gray-500">
-                          {quote.selectedItems.length} itens selecionados
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-
-                  {statusQuotes.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      <p className="text-sm">Nenhum orçamento</p>
-                    </div>
-                  )}
+                {/* Itens Selecionados */}
+                <div className="md:col-span-2">
+                  <h4 className="font-semibold text-gray-900 mb-3">Itens Selecionados</h4>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Preço</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedQuote.selectedItems.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-4 py-2 text-sm text-gray-900">{item.name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-500">{item.category}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{formatCurrency(item.price)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-[#44A17C]">
-            {filteredQuotes.length}
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="text-sm text-gray-600">Total de Orçamentos</div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-green-600">
-            {getQuotesByStatus('approved').length + getQuotesByStatus('paid').length + getQuotesByStatus('completed').length}
-          </div>
-          <div className="text-sm text-gray-600">Aprovados/Finalizados</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-yellow-600">
-            {getQuotesByStatus('new').length + getQuotesByStatus('analyzing').length + getQuotesByStatus('negotiating').length}
-          </div>
-          <div className="text-sm text-gray-600">Em Andamento</div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-[#44A17C]">
-            {formatCurrency(filteredQuotes.reduce((sum, q) => sum + q.totalPrice, 0))}
-          </div>
-          <div className="text-sm text-gray-600">Valor Total</div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
+
+export default KanbanBoard;

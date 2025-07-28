@@ -91,12 +91,6 @@ export const AdminLogin: React.FC = () => {
             )}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Demonstração - Use: admin@alencarempreendimentos.com.br / admin123
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Category } from '../types';
+import { Category, Item } from '../types';
 import { CategoryService, ItemService } from '../services/categoryService';
 import { categories as fallbackCategories } from '../data/categories';
 
@@ -11,6 +11,7 @@ interface CategoryContextType {
   addItemToCategory: (categoryId: string, name: string, price: number) => Promise<void>;
   updateItem: (itemId: string, name: string, price: number) => Promise<void>;
   deleteItem: (itemId: string) => Promise<void>;
+  resetToDefaults: () => void;
   isLoading: boolean;
   error: string | null;
   refreshCategories: () => Promise<void>;
@@ -144,6 +145,11 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  const resetToDefaults = () => {
+    setCategories(fallbackCategories);
+    // Opcionalmente, você pode também recriar os dados no banco
+  };
+
   return (
     <CategoryContext.Provider value={{ 
       categories, 
@@ -153,6 +159,7 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addItemToCategory,
       updateItem,
       deleteItem,
+      resetToDefaults,
       isLoading,
       error,
       refreshCategories

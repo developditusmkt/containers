@@ -30,14 +30,13 @@ export interface Quote {
   basePrice: number;
   totalPrice: number;
   createdAt: string;
-  status: 'pending' | 'analyzing' | 'approved' | 'negotiating' | 'signed';
+  status: 'new' | 'analyzing' | 'negotiating' | 'awaiting-signature' | 'approved' | 'awaiting-payment' | 'paid' | 'rejected' | 'completed';
   assignedTo?: string;
   internalNotes?: string;
   finalApprovedAmount?: number;
   contractLink?: string;
   paymentMethod?: string;
   paymentLink?: string;
-  kanbanStatus?: 'new' | 'analyzing' | 'negotiating' | 'awaiting-signature' | 'approved' | 'awaiting-payment' | 'paid' | 'rejected' | 'completed';
 }
 
 export interface User {

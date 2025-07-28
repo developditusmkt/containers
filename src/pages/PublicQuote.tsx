@@ -27,11 +27,7 @@ export const PublicQuote: React.FC = () => {
     handleSubmit,
     formState: { errors },
     setValue,
-    watch,
-    getValues,
   } = useForm<Customer>();
-
-  const watchedCEP = watch('cep');
 
   const handleItemToggle = (item: Item) => {
     setSelectedItems(prev => {
@@ -57,7 +53,7 @@ export const PublicQuote: React.FC = () => {
 
   const totalPrice = BASE_PRICE + selectedItems.reduce((sum, item) => sum + item.price, 0);
 
-  const createQuote = (customerData: Customer): Quote => {
+  const createQuote = async (customerData: Customer): Promise<Quote | null> => {
     const quote: Quote = {
       id: Date.now().toString(),
       customer: {
@@ -69,16 +65,23 @@ export const PublicQuote: React.FC = () => {
       basePrice: BASE_PRICE,
       totalPrice,
       createdAt: new Date().toISOString(),
-      status: 'pending',
+      status: 'new',
     };
 
-    addQuote(quote);
-    return quote;
+    try {
+      const savedQuote = await addQuote(quote);
+      return savedQuote;
+    } catch (error) {
+      console.error('Erro ao salvar orçamento:', error);
+      return quote; // Retorna o quote mesmo se falhar ao salvar no banco
+    }
   };
 
-  const onSubmit = (data: Customer) => {
-    const quote = createQuote(data);
-    setCurrentQuote(quote);
+  const onSubmit = async (data: Customer) => {
+    const quote = await createQuote(data);
+    if (quote) {
+      setCurrentQuote(quote);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -186,11 +189,17 @@ export const PublicQuote: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Telefone com DDD *
                     </label>
-                    <InputMask
-                      mask="(99) 99999-9999"
+                    <input
+                      type="tel"
                       {...register('phone', { required: 'Telefone é obrigatório' })}
+                      onChange={(e) => {
+                        const maskedValue = applyPhoneMask(e.target.value);
+                        e.target.value = maskedValue;
+                        setValue('phone', removeMask(e.target.value));
+                      }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
                       placeholder="(11) 99999-9999"
+                      maxLength={15}
                     />
                     {errors.phone && (
                       <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
@@ -222,16 +231,18 @@ export const PublicQuote: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       CEP *
                     </label>
-                    <InputMask
-                      mask="99999-999"
+                    <input
+                      type="text"
                       {...register('cep', { required: 'CEP é obrigatório' })}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        setValue('cep', value);
-                        handleCEPChange(value);
+                        const maskedValue = applyCepMask(e.target.value);
+                        e.target.value = maskedValue;
+                        setValue('cep', maskedValue);
+                        handleCEPChange(maskedValue);
                       }}
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#44A17C] focus:border-[#44A17C]"
                       placeholder="00000-000"
+                      maxLength={9}
                     />
                     {errors.cep && (
                       <p className="text-red-500 text-sm mt-1">{errors.cep.message}</p>
