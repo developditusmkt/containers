@@ -3,95 +3,95 @@
  * Integração com API do Asaas via Netlify Serverless Functions
  */
 
-import { handler as createHandler } from '@netlify/functions';
 import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+import serverless from 'serverless-http';
 import dotenv from 'dotenv';
-import winston from 'winston';
-import asaasRoutes from '../../backend/routes/asaas.js';
-import { errorHandler, notFound } from '../../backend/middleware/errorMiddleware.js';
 
 // Carregar variáveis de ambiente
 dotenv.config();
 
-// Logger configurado para Netlify
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console()
-  ]
-});
+// Importar rotas do backend (ajustar path relativo)
+const createAsaasRoutes = () => {
+  const router = express.Router();
+  
+  // Health check
+  router.get('/health', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Backend Alencar Orçamentos - Netlify Functions',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+  
+  // Middleware para validar API key
+  const validateApiKey = (req, res, next) => {
+    if (!process.env.ASAAS_API_KEY) {
+      return res.status(503).json({
+        success: false,
+        error: {
+          message: 'API Key do Asaas não configurada',
+          code: 'ASAAS_NOT_CONFIGURED'
+        }
+      });
+    }
+    next();
+  };
+  
+  // Endpoint para criar payment links
+  router.post('/asaas/payment-links', validateApiKey, async (req, res) => {
+    try {
+      console.log('🎯 Criando payment link via Netlify Function');
+      
+      const paymentData = req.body;
+      
+      // Importar dinamicamente o axios para evitar problemas de ES modules
+      const axios = (await import('axios')).default;
+      
+      const response = await axios.post(
+        'https://api-sandbox.asaas.com/v3/paymentLinks',
+        paymentData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'access_token': process.env.ASAAS_API_KEY
+          }
+        }
+      );
+      
+      res.status(201).json({
+        success: true,
+        data: response.data
+      });
+      
+    } catch (error) {
+      console.error('Erro na API Asaas:', error.response?.data || error.message);
+      
+      res.status(500).json({
+        success: false,
+        error: error.response?.data || { message: error.message }
+      });
+    }
+  });
+  
+  return router;
+};
 
 // Criar app Express
 const app = express();
 
-// Middlewares básicos
-app.use(helmet());
-app.use(compression());
-
-// CORS configurado para produção
+// CORS configurado
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://*.netlify.app',
-    'https://*.netlify.com'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'access_token']
+  origin: true,
+  credentials: true
 }));
 
 // Parse JSON
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json());
 
-// Rate limiting mais suave para serverless
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 200, // 200 requests por IP
-  message: {
-    success: false,
-    error: 'Muitas requisições. Tente novamente em alguns minutos.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-app.use(limiter);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Backend Alencar Orçamentos - Netlify Functions',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Rotas da API do Asaas
-app.use('/api/asaas', asaasRoutes);
-
-// 404 handler
-app.use(notFound);
-
-// Error handler
-app.use(errorHandler);
-
-// Log de inicialização
-logger.info('🚀 Netlify Function initialized', {
-  environment: process.env.NODE_ENV || 'development',
-  timestamp: new Date().toISOString()
-});
+// Usar as rotas
+app.use('/', createAsaasRoutes());
 
 // Converter Express app para Netlify Function
-import serverless from 'serverless-http';
 export const handler = serverless(app);
