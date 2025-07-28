@@ -9,7 +9,7 @@ import { createPaymentLinkMock } from './asaasMockService';
 const getBackendUrl = () => {
   // Se estiver no Netlify, usar as functions
   if (window.location.hostname.includes('netlify')) {
-    return window.location.origin; // Usa o mesmo domínio
+    return 'https://containers-alencar.netlify.app/.netlify/functions/api';
   }
   
   // Variável de ambiente customizada
@@ -57,7 +57,7 @@ export async function createPaymentLink(quote: Quote) {
 
     console.log('📋 Dados sendo enviados para backend:', JSON.stringify(paymentLinkData, null, 2));
 
-    const response = await fetch(`${BACKEND_URL}/api/asaas/payment-links`, {
+    const response = await fetch(`${BACKEND_URL}/asaas/payment-links`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
