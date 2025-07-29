@@ -57,7 +57,7 @@ export async function createPaymentLink(quote: Quote) {
       dueDateLimitDays: 7,
       subscriptionCycle: null,
       callback: {
-        successUrl: "https://grvolt.com.br/sucesso",
+        successUrl: "https://siteditus.com.br/sucesso",
         autoRedirect: true
       }
     };
