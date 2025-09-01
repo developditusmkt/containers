@@ -9,6 +9,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { useCategories } from '../contexts/CategoryContext';
+import { useOperation } from '../contexts/OperationContext';
 import { formatCurrency } from '../utils/formatters';
 
 export const CategoryManagement: React.FC = () => {
@@ -24,6 +25,8 @@ export const CategoryManagement: React.FC = () => {
     // error,
     // refreshCategories
   } = useCategories();
+  
+  const { operationType, isVenda, isAluguel } = useOperation();
 
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<{ categoryId: string; itemId: string } | null>(null);
@@ -39,7 +42,7 @@ export const CategoryManagement: React.FC = () => {
   const handleAddCategory = async () => {
     if (newCategory.name.trim()) {
       try {
-        await addCategory(newCategory.name.trim());
+        await addCategory(newCategory.name.trim(), operationType);
         setNewCategory({ name: '' });
         setShowAddCategory(false);
       } catch (error) {
@@ -88,7 +91,11 @@ export const CategoryManagement: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-[#3e514f]">Gerenciar Categorias e Itens</h2>
-          <p className="text-gray-600">Configure os itens disponíveis na calculadora</p>
+          <p className="text-gray-600">
+            Modo: <span className={`font-semibold ${isVenda ? 'text-blue-600' : 'text-green-600'}`}>
+              {isVenda ? 'Venda' : 'Aluguel'}
+            </span> - Configure os itens disponíveis
+          </p>
         </div>
         <div className="flex gap-3">
           <button
@@ -96,7 +103,7 @@ export const CategoryManagement: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-[#44A17C] text-white rounded-lg hover:bg-[#3e514f] transition-colors"
           >
             <Plus size={16} />
-            Nova Categoria
+            Nova Categoria {isAluguel ? '(Aluguel)' : '(Venda)'}
           </button>
         </div>
       </div>

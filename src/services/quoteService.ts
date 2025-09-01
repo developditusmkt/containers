@@ -16,6 +16,7 @@ export interface DatabaseQuote {
   selected_items: any;
   base_price: number;
   total_price: number;
+  operation_type: string;
   status: string;
   created_at: string;
   assigned_to: string | null;
@@ -40,6 +41,7 @@ const quoteToDatabase = (quote: Quote): Omit<DatabaseQuote, 'id' | 'created_at'>
   selected_items: quote.selectedItems,
   base_price: quote.basePrice,
   total_price: quote.totalPrice,
+  operation_type: quote.operationType,
   status: quote.status,
   assigned_to: quote.assignedTo || null,
   internal_notes: quote.internalNotes || null,
@@ -66,6 +68,7 @@ export const databaseToQuote = (dbQuote: DatabaseQuote): Quote => ({
   selectedItems: dbQuote.selected_items,
   basePrice: dbQuote.base_price,
   totalPrice: dbQuote.total_price,
+  operationType: dbQuote.operation_type as 'venda' | 'aluguel',
   status: dbQuote.status as Quote['status'],
   createdAt: dbQuote.created_at,
   assignedTo: dbQuote.assigned_to || undefined,

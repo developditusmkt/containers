@@ -8,6 +8,7 @@ import {
   Users
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { OperationToggle } from '../components/OperationToggle';
 import { CategoryManagement } from '../components/CategoryManagement';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { UserManagement } from '../components/UserManagement';
@@ -40,13 +41,17 @@ export const AdminDashboard: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">Dashboard Admin</h1>
               <p className="text-sm text-gray-600">Alencar Empreendimentos</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <LogOut className="mr-2" size={18} />
-              Sair
-            </button>
+            
+            <div className="flex items-center space-x-4">
+              <OperationToggle />
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <LogOut className="mr-2" size={18} />
+                Sair
+              </button>
+            </div>
           </div>
         </div>
       </header>

@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
-import { Category, Item } from '../types';
+import { Category, Item, OperationType } from '../types';
 
 // Tipos para o banco de dados
 export interface DatabaseCategory {
   id: string;
   name: string;
+  operation_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -14,6 +15,7 @@ export interface DatabaseItem {
   name: string;
   price: number;
   category_id: string;
+  operation_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +45,7 @@ export class CategoryService {
       const categories: Category[] = categoriesData.map((category: DatabaseCategory) => ({
         id: category.id,
         name: category.name,
+        operationType: category.operation_type as OperationType,
         items: itemsData
           .filter((item: DatabaseItem) => item.category_id === category.id)
           .map((item: DatabaseItem) => ({
@@ -50,6 +53,7 @@ export class CategoryService {
             name: item.name,
             price: item.price,
             category: category.name,
+            operationType: item.operation_type as OperationType,
           })),
       }));
 
@@ -61,11 +65,11 @@ export class CategoryService {
   }
 
   // Criar nova categoria
-  static async createCategory(name: string): Promise<Category> {
+  static async createCategory(name: string, operationType: OperationType = 'venda'): Promise<Category> {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .insert([{ name }])
+        .insert([{ name, operation_type: operationType }])
         .select()
         .single();
 
@@ -74,6 +78,7 @@ export class CategoryService {
       return {
         id: data.id,
         name: data.name,
+        operationType: data.operation_type as OperationType,
         items: [],
       };
     } catch (error) {
@@ -116,7 +121,7 @@ export class CategoryService {
 // Serviços para Itens
 export class ItemService {
   // Criar novo item
-  static async createItem(categoryId: string, name: string, price: number): Promise<Item> {
+  static async createItem(categoryId: string, name: string, price: number, operationType: OperationType = 'venda'): Promise<Item> {
     try {
       // Buscar nome da categoria
       const { data: categoryData, error: categoryError } = await supabase
@@ -130,7 +135,7 @@ export class ItemService {
       // Criar item
       const { data, error } = await supabase
         .from('items')
-        .insert([{ name, price, category_id: categoryId }])
+        .insert([{ name, price, category_id: categoryId, operation_type: operationType }])
         .select()
         .single();
 
@@ -141,6 +146,7 @@ export class ItemService {
         name: data.name,
         price: data.price,
         category: categoryData.name,
+        operationType: data.operation_type as OperationType,
       };
     } catch (error) {
       console.error('Erro ao criar item:', error);
@@ -187,6 +193,7 @@ export class ItemService {
           id,
           name,
           price,
+          operation_type,
           categories!inner(name)
         `)
         .eq('category_id', categoryId)
@@ -199,6 +206,7 @@ export class ItemService {
         name: item.name,
         price: item.price,
         category: item.categories.name,
+        operationType: item.operation_type as OperationType,
       }));
     } catch (error) {
       console.error('Erro ao buscar itens por categoria:', error);

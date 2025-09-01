@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Download, MessageCircle, Mail, Eye, Calculator } from 'lucide-react';
 import { CategorySection } from '../components/CategorySection';
 import { QuoteModal } from '../components/QuoteModal';
+import { PublicOperationToggle } from '../components/PublicOperationToggle';
 import { useCategories } from '../contexts/CategoryContext';
+import { useOperation } from '../contexts/OperationContext';
 import { Customer, Item, Quote } from '../types';
 import { formatCurrency, generateWhatsAppLink, generateEmailLink } from '../utils/formatters';
 import { generateQuotePDF } from '../services/pdfService';
@@ -17,6 +19,7 @@ const PURPOSE_OPTIONS = ['Pessoal', 'Comercial', 'Locação para Airbnb'];
 export const PublicQuote: React.FC = () => {
   const { addQuote } = useQuotes();
   const { categories } = useCategories();
+  const { operationType, isVenda } = useOperation();
   const [selectedItems, setSelectedItems] = useState<Item[]>([]);
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +31,11 @@ export const PublicQuote: React.FC = () => {
     formState: { errors },
     setValue,
   } = useForm<Customer>();
+
+  // Limpar itens selecionados quando o tipo de operação mudar
+  useEffect(() => {
+    setSelectedItems([]);
+  }, [operationType]);
 
   const handleItemToggle = (item: Item) => {
     setSelectedItems(prev => {
@@ -64,6 +72,7 @@ export const PublicQuote: React.FC = () => {
       selectedItems,
       basePrice: BASE_PRICE,
       totalPrice,
+      operationType,
       createdAt: new Date().toISOString(),
       status: 'new',
     };
@@ -125,7 +134,18 @@ export const PublicQuote: React.FC = () => {
                 {formatCurrency(BASE_PRICE)}
               </span>
             </div>
+            <div className="mt-4">
+              <span className="text-lg text-gray-600">
+                Modo atual: 
+                <span className={`font-semibold ml-2 ${isVenda ? 'text-blue-500' : 'text-green-500'}`}>
+                  {isVenda ? 'Compra' : 'Aluguel'}
+                </span>
+              </span>
+            </div>
           </div>
+          
+          {/* Operation Toggle */}
+          <PublicOperationToggle />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

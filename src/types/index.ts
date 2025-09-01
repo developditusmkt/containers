@@ -1,14 +1,18 @@
+export type OperationType = 'venda' | 'aluguel';
+
 export interface Item {
   id: string;
   name: string;
   price: number;
   category: string;
+  operationType: OperationType;
 }
 
 export interface Category {
   id: string;
   name: string;
   items: Item[];
+  operationType: OperationType;
 }
 
 export interface Customer {
@@ -37,6 +41,7 @@ export interface Quote {
   contractLink?: string;
   paymentMethod?: string;
   paymentLink?: string;
+  operationType: OperationType;
 }
 
 export interface User {
