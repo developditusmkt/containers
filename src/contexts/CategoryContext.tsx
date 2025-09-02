@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Category, OperationType } from '../types';
 import { CategoryService, ItemService } from '../services/categoryService';
-import { categories as fallbackCategories } from '../data/categories';
 import { useOperation } from './OperationContext';
 
 interface CategoryContextType {
@@ -35,7 +34,18 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const { operationType } = useOperation();
 
   // Filtrar categorias baseado no tipo de operação
-  const categories = allCategories.filter(category => category.operationType === operationType);
+  const categories = useMemo(() => {
+    const filtered = allCategories.filter(category => category.operationType === operationType);
+    
+    console.log('🔍 CategoryContext - Filtrando:', operationType, '→', filtered.length, 'categorias');
+    
+    return filtered;
+  }, [allCategories, operationType]);
+
+  // Log quando operationType mudar
+  useEffect(() => {
+    console.log('🔄 CategoryContext - operationType mudou para:', operationType);
+  }, [operationType]);
 
   // Carregar categorias do Supabase
   const loadCategories = async () => {
@@ -54,22 +64,16 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }))
       }));
       
+      console.log('✅ CategoryContext - Carregados do Supabase:', dataWithOperationType.length, 'categorias');
+      
       setAllCategories(dataWithOperationType);
     } catch (err) {
       console.error('Erro ao carregar categorias:', err);
-      setError('Erro ao carregar categorias do banco de dados');
+      setError('Erro ao carregar categorias do banco de dados. Verifique sua conexão.');
       
-      // Fallback para dados locais em caso de erro - adicionar operationType
-      const fallbackWithType = fallbackCategories.map(cat => ({
-        ...cat,
-        operationType: 'venda' as OperationType,
-        items: cat.items.map(item => ({
-          ...item,
-          operationType: 'venda' as OperationType
-        }))
-      }));
-      
-      setAllCategories(fallbackWithType);
+      // Não usar dados de fallback - manter array vazio para forçar uso do banco
+      console.log('❌ CategoryContext - Erro ao carregar, mantendo array vazio');
+      setAllCategories([]);
     } finally {
       setIsLoading(false);
     }

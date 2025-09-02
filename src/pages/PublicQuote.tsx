@@ -4,6 +4,7 @@ import { Download, MessageCircle, Mail, Eye, Calculator } from 'lucide-react';
 import { CategorySection } from '../components/CategorySection';
 import { QuoteModal } from '../components/QuoteModal';
 import { PublicOperationToggle } from '../components/PublicOperationToggle';
+import { ContainerSizeSelector, ContainerSize } from '../components/ContainerSizeSelector';
 import { useCategories } from '../contexts/CategoryContext';
 import { useOperation } from '../contexts/OperationContext';
 import { Customer, Item, Quote } from '../types';
@@ -13,7 +14,6 @@ import { fetchCEP } from '../services/cepService';
 import { useQuotes } from '../contexts/QuoteContext';
 import { applyPhoneMask, applyCepMask, removeMask } from '../utils/maskUtils';
 
-const BASE_PRICE = 30000;
 const PURPOSE_OPTIONS = ['Pessoal', 'Comercial', 'Locação para Airbnb'];
 
 export const PublicQuote: React.FC = () => {
@@ -21,6 +21,7 @@ export const PublicQuote: React.FC = () => {
   const { categories } = useCategories();
   const { operationType, isVenda } = useOperation();
   const [selectedItems, setSelectedItems] = useState<Item[]>([]);
+  const [selectedContainer, setSelectedContainer] = useState<ContainerSize | null>(null);
   const [currentQuote, setCurrentQuote] = useState<Quote | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addressInfo, setAddressInfo] = useState({ city: '', state: '' });
@@ -35,7 +36,13 @@ export const PublicQuote: React.FC = () => {
   // Limpar itens selecionados quando o tipo de operação mudar
   useEffect(() => {
     setSelectedItems([]);
+    setSelectedContainer(null); // Limpar container também
   }, [operationType]);
+
+  // Debug: verificar filtragem das categorias
+  useEffect(() => {
+    console.log('🔍 PublicQuote - Modo:', operationType, '→', categories.length, 'categorias disponíveis');
+  }, [operationType, categories]);
 
   const handleItemToggle = (item: Item) => {
     setSelectedItems(prev => {
@@ -59,7 +66,10 @@ export const PublicQuote: React.FC = () => {
     }
   };
 
-  const totalPrice = BASE_PRICE + selectedItems.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = (selectedContainer ? (isVenda ? selectedContainer.vendaPrice : selectedContainer.aluguelPrice) : 0) + 
+                    selectedItems.reduce((sum, item) => sum + item.price, 0);
+
+  const basePrice = selectedContainer ? (isVenda ? selectedContainer.vendaPrice : selectedContainer.aluguelPrice) : 0;
 
   const createQuote = async (customerData: Customer): Promise<Quote | null> => {
     const quote: Quote = {
@@ -70,7 +80,7 @@ export const PublicQuote: React.FC = () => {
         state: addressInfo.state,
       },
       selectedItems,
-      basePrice: BASE_PRICE,
+      basePrice: basePrice,
       totalPrice,
       operationType,
       createdAt: new Date().toISOString(),
@@ -87,6 +97,11 @@ export const PublicQuote: React.FC = () => {
   };
 
   const onSubmit = async (data: Customer) => {
+    if (!selectedContainer) {
+      alert('Por favor, selecione um tamanho de container antes de gerar o orçamento.');
+      return;
+    }
+    
     const quote = await createQuote(data);
     if (quote) {
       setCurrentQuote(quote);
@@ -129,9 +144,12 @@ export const PublicQuote: React.FC = () => {
             <h2 className="text-2xl text-[#44A17C] mb-4">Alencar Empreendimentos</h2>
             <div className="flex items-center justify-center gap-2 text-lg">
               <Calculator className="text-[#44A17C]" size={24} />
-              <span className="text-gray-600">Valor base do container:</span>
-              <span className="text-[#44A17C] font-bold text-xl">
-                {formatCurrency(BASE_PRICE)}
+              <span className="text-gray-600">
+                {selectedContainer ? (
+                  `Container ${selectedContainer.size}: ${formatCurrency(basePrice)}${isVenda ? '' : ' mensal'}`
+                ) : (
+                  'Selecione um container para ver o preço'
+                )}
               </span>
             </div>
             <div className="mt-4">
@@ -146,6 +164,12 @@ export const PublicQuote: React.FC = () => {
           
           {/* Operation Toggle */}
           <PublicOperationToggle />
+          
+          {/* Container Size Selector */}
+          <ContainerSizeSelector 
+            selectedSize={selectedContainer}
+            onSizeSelect={setSelectedContainer}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -170,7 +194,9 @@ export const PublicQuote: React.FC = () => {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
                   <span>Container base:</span>
-                  <span className="font-semibold">{formatCurrency(BASE_PRICE)}</span>
+                  <span className="font-semibold">
+                    {selectedContainer ? formatCurrency(basePrice) : 'R$ 0,00'}
+                  </span>
                 </div>
                 {selectedItems.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm text-gray-600">
@@ -324,9 +350,14 @@ export const PublicQuote: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-[#44A17C] to-[#3e514f] text-white py-4 rounded-lg hover:from-[#3e514f] hover:to-[#44A17C] transition-all font-semibold text-lg shadow-lg"
+                    disabled={!selectedContainer}
+                    className={`w-full py-4 rounded-lg font-semibold text-lg shadow-lg transition-all ${
+                      selectedContainer
+                        ? 'bg-gradient-to-r from-[#44A17C] to-[#3e514f] text-white hover:from-[#3e514f] hover:to-[#44A17C]'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
-                    Gerar Orçamento
+                    {selectedContainer ? 'Gerar Orçamento' : 'Selecione um Container'}
                   </button>
                 </form>
               </div>
