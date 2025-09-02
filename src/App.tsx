@@ -10,6 +10,8 @@ import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
+import ContractDetails from './components/contracts/ContractDetails';
+import PublicContractSigning from './pages/PublicContractSigning';
 
 function App() {
   return (
@@ -24,11 +26,20 @@ function App() {
                 <Route path="/login" element={<AdminLogin />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/public/sign/:signingLink" element={<PublicContractSigning />} />
                 <Route 
                   path="/admin" 
                   element={
                     <ProtectedRoute>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/contracts/:contractId" 
+                  element={
+                    <ProtectedRoute>
+                      <ContractDetails />
                     </ProtectedRoute>
                   } 
                 />

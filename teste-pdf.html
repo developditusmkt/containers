@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Geração de PDF</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .button { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin: 10px 0;
+        }
+        .button:hover { background: #2563eb; }
+        .contract { 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        .signature { 
+            border: 1px solid #ddd; 
+            padding: 10px; 
+            margin: 10px 0;
+            background: white;
+        }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste de Geração de PDF</h1>
+        
+        <div class="contract">
+            <h2>Contrato de Teste</h2>
+            <p>Este é um contrato de exemplo para testar a geração de PDF.</p>
+            <p>Data: <span id="date"></span></p>
+            
+            <div class="signature">
+                <h3>Assinatura 1</h3>
+                <p>Nome: João da Silva</p>
+                <p>Email: joao@teste.com</p>
+                <canvas id="signature1" width="300" height="150" style="border: 1px solid #ccc;"></canvas>
+            </div>
+            
+            <div class="signature">
+                <h3>Assinatura 2</h3>
+                <p>Nome: Maria dos Santos</p>
+                <p>Email: maria@teste.com</p>
+                <canvas id="signature2" width="300" height="150" style="border: 1px solid #ccc;"></canvas>
+            </div>
+        </div>
+        
+        <button class="button" onclick="generatePDF()">Gerar PDF de Teste</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <script>
+        // Definir data atual
+        document.getElementById('date').textContent = new Date().toLocaleDateString('pt-BR');
+        
+        // Criar assinaturas de exemplo
+        function createSampleSignature(canvasId, text) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            ctx.font = '24px Arial';
+            ctx.fillStyle = '#333';
+            ctx.fillText(text, 20, 80);
+            
+            // Adicionar uma linha ondulada
+            ctx.beginPath();
+            ctx.moveTo(20, 100);
+            for (let x = 20; x < 280; x += 10) {
+                ctx.lineTo(x, 100 + Math.sin(x/10) * 10);
+            }
+            ctx.stroke();
+        }
+        
+        createSampleSignature('signature1', 'João da Silva');
+        createSampleSignature('signature2', 'Maria dos Santos');
+        
+        // Função para gerar PDF
+        async function generatePDF() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Gerando PDF...</p>';
+            
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                // Adicionar título
+                pdf.setFontSize(20);
+                pdf.text('Contrato de Teste', 20, 30);
+                
+                // Adicionar conteúdo
+                pdf.setFontSize(12);
+                pdf.text('Este é um contrato de exemplo para testar a geração de PDF.', 20, 50);
+                pdf.text('Data: ' + new Date().toLocaleDateString('pt-BR'), 20, 60);
+                
+                // Capturar e adicionar assinaturas
+                const canvas1 = document.getElementById('signature1');
+                const canvas2 = document.getElementById('signature2');
+                
+                // Converter canvas para imagem e adicionar ao PDF
+                const sig1Data = canvas1.toDataURL('image/png');
+                const sig2Data = canvas2.toDataURL('image/png');
+                
+                pdf.text('Assinatura 1: João da Silva', 20, 80);
+                pdf.addImage(sig1Data, 'PNG', 20, 85, 75, 37);
+                
+                pdf.text('Assinatura 2: Maria dos Santos', 20, 130);
+                pdf.addImage(sig2Data, 'PNG', 20, 135, 75, 37);
+                
+                // Salvar PDF
+                pdf.save('contrato-teste.pdf');
+                
+                resultDiv.innerHTML = '<p class="success">✅ PDF gerado e baixado com sucesso!</p>';
+                
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                resultDiv.innerHTML = '<p class="error">❌ Erro ao gerar PDF: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -37,7 +37,7 @@ export interface Quote {
   basePrice: number;
   totalPrice: number;
   createdAt: string;
-  status: 'new' | 'analyzing' | 'negotiating' | 'awaiting-signature' | 'approved' | 'awaiting-payment' | 'paid' | 'rejected' | 'completed';
+  status: 'new' | 'analyzing' | 'negotiating' | 'awaiting-signature' | 'approved' | 'awaiting-payment' | 'paid' | 'rejected' | 'completed' | 'deleted';
   assignedTo?: string;
   internalNotes?: string;
   finalApprovedAmount?: number;

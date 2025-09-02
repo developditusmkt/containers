@@ -5,9 +5,14 @@ import { formatCurrency, formatDate, formatPhone } from '../utils/formatters';
 import { Eye, Trash2, Search, Edit, FileText, CreditCard, CheckCircle, Copy, ExternalLink } from 'lucide-react';
 // Usando integração inteligente (real ou mock automaticamente)
 import { createPaymentLink, validateAsaasConfig, diagnoseAsaasConfig } from '../services/asaasIntegration';
+import ContractGenerationModal from './contracts/ContractGenerationModal';
+import { ContractSigningService } from '../services/contractSigningService';
+import { GeneratedContract } from '../types/contractSigning';
+import { useNavigate } from 'react-router-dom';
 
 export const QuoteManagement: React.FC = () => {
   const { quotes, deleteQuote, updateQuote, refreshQuotes, loading } = useQuotes();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<'all' | Quote['status']>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -26,10 +31,51 @@ export const QuoteManagement: React.FC = () => {
   const [isGeneratingPayment, setIsGeneratingPayment] = useState(false);
   const [showPaymentLinkNotification, setShowPaymentLinkNotification] = useState(false);
   const [paymentLinkData, setPaymentLinkData] = useState({ amount: '', customerName: '', link: '' });
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [selectedQuoteForContract, setSelectedQuoteForContract] = useState<Quote | null>(null);
+  const [quoteContracts, setQuoteContracts] = useState<Map<string, GeneratedContract>>(new Map());
 
   useEffect(() => {
     refreshQuotes();
+    loadQuoteContracts();
   }, []);
+
+  const loadQuoteContracts = async () => {
+    // Carregar contratos existentes para todos os orçamentos
+    const contractsMap = new Map<string, GeneratedContract>();
+    
+    for (const quote of quotes) {
+      try {
+        const contract = await ContractSigningService.getContractByQuoteId(quote.id);
+        if (contract) {
+          contractsMap.set(quote.id, contract);
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar contrato para quote ${quote.id}:`, error);
+      }
+    }
+    
+    setQuoteContracts(contractsMap);
+  };
+
+  // Navegação para detalhes do contrato
+  const navigateToContractDetails = (contractId: string) => {
+    navigate(`/contracts/${contractId}`);
+  };
+
+  // Função para lidar com geração/visualização de contrato
+  const handleContractAction = (quote: Quote) => {
+    const existingContract = quoteContracts.get(quote.id);
+    
+    if (existingContract && existingContract.signingLink) {
+      // Se já existe contrato, navegar para detalhes
+      navigateToContractDetails(existingContract.signingLink);
+    } else {
+      // Se não existe, abrir modal de geração
+      setSelectedQuoteForContract(quote);
+      setShowContractModal(true);
+    }
+  };
 
   const filteredQuotes = quotes.filter(quote => {
     const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
@@ -50,11 +96,11 @@ export const QuoteManagement: React.FC = () => {
   };
 
   const handleDeleteQuote = async (quoteId: string) => {
-    if (window.confirm('Tem certeza que deseja deletar este orçamento?')) {
+    if (window.confirm('Tem certeza que deseja excluir este orçamento? Ele será marcado como excluído e não aparecerá mais no dashboard.')) {
       try {
         await deleteQuote(quoteId);
       } catch (error) {
-        console.error('Erro ao deletar orçamento:', error);
+        console.error('Erro ao excluir orçamento:', error);
       }
     }
   };
@@ -135,8 +181,29 @@ export const QuoteManagement: React.FC = () => {
   };
 
   const handleGenerateContract = (quote: Quote) => {
-    // Função para gerar contrato - implementar integração futura
-    alert(`Gerar contrato para ${quote.customer.name}\nID: ${quote.id}\nEsta funcionalidade será implementada em breve.`);
+    handleContractAction(quote);
+  };
+
+  const handleGoToContract = (quote: Quote) => {
+    handleContractAction(quote);
+  };
+
+  const handleContractGenerated = async (contract: GeneratedContract) => {
+    // Atualizar o mapa de contratos
+    setQuoteContracts(prev => {
+      const newMap = new Map(prev);
+      newMap.set(contract.quoteId, contract);
+      return newMap;
+    });
+    
+    // Fechar modal
+    setShowContractModal(false);
+    setSelectedQuoteForContract(null);
+    
+    // Navegar para os detalhes do contrato recém-criado
+    if (contract.signingLink) {
+      navigateToContractDetails(contract.signingLink);
+    }
   };
 
   const handleGeneratePaymentLink = async (quote: Quote) => {
@@ -239,7 +306,8 @@ export const QuoteManagement: React.FC = () => {
       'awaiting-payment': 'bg-indigo-100 text-indigo-800',
       'paid': 'bg-emerald-100 text-emerald-800',
       'rejected': 'bg-red-100 text-red-800',
-      'completed': 'bg-gray-100 text-gray-800'
+      'completed': 'bg-gray-100 text-gray-800',
+      'deleted': 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -254,7 +322,8 @@ export const QuoteManagement: React.FC = () => {
       'awaiting-payment': 'Aguardando Pagamento',
       'paid': 'Pago',
       'rejected': 'Rejeitado',
-      'completed': 'Concluído'
+      'completed': 'Concluído',
+      'deleted': 'Excluído'
     };
     return labels[status] || status;
   };
@@ -395,13 +464,23 @@ export const QuoteManagement: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleGenerateContract(quote)}
-                          className="text-purple-600 hover:text-purple-900 flex items-center"
-                          title="Gerar contrato"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </button>
+                        {quoteContracts.has(quote.id) ? (
+                          <button
+                            onClick={() => handleGoToContract(quote)}
+                            className="text-purple-600 hover:text-purple-900 flex items-center"
+                            title="Ir ao contrato"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateContract(quote)}
+                            className="text-purple-600 hover:text-purple-900 flex items-center"
+                            title="Gerar contrato"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             console.log('🔍 Quote clicado:', quote);
@@ -429,7 +508,7 @@ export const QuoteManagement: React.FC = () => {
                         <button
                           onClick={() => handleDeleteQuote(quote.id)}
                           className="text-red-600 hover:text-red-900 flex items-center"
-                          title="Excluir orçamento"
+                          title="Excluir orçamento (exclusão lógica)"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -786,6 +865,25 @@ export const QuoteManagement: React.FC = () => {
           </svg>
           <span className="font-medium">{errorMessage}</span>
         </div>
+      )}
+
+      {/* Contract Generation Modal */}
+      {selectedQuoteForContract && (
+        <ContractGenerationModal
+          isOpen={showContractModal}
+          onClose={() => {
+            setShowContractModal(false);
+            setSelectedQuoteForContract(null);
+          }}
+          quoteId={selectedQuoteForContract.id}
+          quoteData={{
+            clientName: selectedQuoteForContract.customer.name,
+            clientEmail: selectedQuoteForContract.customer.email,
+            operationType: selectedQuoteForContract.operationType || 'purchase',
+            totalValue: selectedQuoteForContract.finalApprovedAmount || selectedQuoteForContract.totalPrice
+          }}
+          onContractGenerated={handleContractGenerated}
+        />
       )}
     </div>
   );

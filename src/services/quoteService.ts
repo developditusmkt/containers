@@ -96,11 +96,12 @@ export const createQuote = async (quote: Omit<Quote, 'id' | 'createdAt'>): Promi
   return databaseToQuote(data);
 };
 
-// Buscar todos os orçamentos
+// Buscar todos os orçamentos (excluindo os deletados)
 export const getAllQuotes = async (): Promise<Quote[]> => {
   const { data, error } = await supabase
     .from('quotes')
     .select('*')
+    .neq('status', 'deleted')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -208,15 +209,15 @@ export const updateQuote = async (id: string, updates: Partial<Quote>): Promise<
   return databaseToQuote(updatedQuote);
 };
 
-// Deletar orçamento
+// Deletar orçamento (exclusão lógica)
 export const deleteQuote = async (id: string): Promise<void> => {
   const { error } = await supabase
     .from('quotes')
-    .delete()
+    .update({ status: 'deleted' })
     .eq('id', id);
 
   if (error) {
-    throw new Error(`Erro ao deletar orçamento: ${error.message}`);
+    throw new Error(`Erro ao excluir orçamento: ${error.message}`);
   }
 };
 

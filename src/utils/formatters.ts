@@ -1,3 +1,5 @@
+import { Quote, Item } from '../types';
+
 export const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -17,7 +19,22 @@ export const formatPhone = (phone: string): string => {
 };
 
 export const formatDate = (date: string): string => {
-  return new Date(date).toLocaleDateString('pt-BR');
+  if (!date || date === 'undefined' || date === 'null') {
+    console.warn('⚠️ formatDate recebeu data inválida:', date);
+    return 'Data não definida';
+  }
+  
+  try {
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate.getTime())) {
+      console.warn('⚠️ formatDate não conseguiu parsear a data:', date);
+      return 'Data inválida';
+    }
+    return parsedDate.toLocaleDateString('pt-BR');
+  } catch (error) {
+    console.error('❌ Erro ao formatar data:', error, 'Data original:', date);
+    return 'Erro na data';
+  }
 };
 
 export const generateWhatsAppLink = (quote: Quote): string => {
@@ -28,18 +45,15 @@ Nome: ${quote.customer.name}
 Telefone: ${quote.customer.phone}
 E-mail: ${quote.customer.email}
 Endereço: ${quote.customer.address}
-Data do Projeto: ${quote.customer.projectDate}
-Finalidade: ${quote.customer.purpose.join(', ')}
 
-*Resumo do Orçamento:*
-Container Base: ${formatCurrency(quote.basePrice)}
-${quote.selectedItems.map(item => `${item.name}: ${formatCurrency(item.price)}`).join('\n')}
+*Itens Selecionados:*
+${quote.selectedItems.map((item: any) => `${item.name}: ${formatCurrency(item.price)}`).join('\n')}
 
-*Total: ${formatCurrency(quote.totalPrice)}*
+*Valor Total:* ${formatCurrency(quote.totalPrice)}
 
-Aguardo retorno. Obrigado!`;
+Aguardo contato. Obrigado!`;
 
-  return `https://wa.me/5511934991883?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/5511999999999?text=${encodeURIComponent(message)}`;
 };
 
 export const generateEmailLink = (quote: Quote): string => {
@@ -58,7 +72,7 @@ Finalidade: ${quote.customer.purpose.join(', ')}
 
 Resumo do Orçamento:
 Container Base: ${formatCurrency(quote.basePrice)}
-${quote.selectedItems.map(item => `${item.name}: ${formatCurrency(item.price)}`).join('\n')}
+${quote.selectedItems.map((item: any) => `${item.name}: ${formatCurrency(item.price)}`).join('\n')}
 
 Total: ${formatCurrency(quote.totalPrice)}
 
