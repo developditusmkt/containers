@@ -1,5 +1,8 @@
 export type OperationType = 'venda' | 'aluguel';
 
+// Contract types
+export * from './contract';
+
 export interface Item {
   id: string;
   name: string;

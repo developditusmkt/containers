@@ -5,7 +5,8 @@ import {
   FileText,
   Package,
   Kanban,
-  Users
+  Users,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { OperationToggle } from '../components/OperationToggle';
@@ -13,11 +14,12 @@ import { CategoryManagement } from '../components/CategoryManagement';
 import { KanbanBoard } from '../components/KanbanBoard';
 import { UserManagement } from '../components/UserManagement';
 import { QuoteManagement } from '../components/QuoteManagement';
+import ContractManagementRefactor from '../components/ContractManagementRefactor';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'quotes' | 'kanban' | 'categories' | 'users'>('quotes');
+  const [activeTab, setActiveTab] = useState<'quotes' | 'kanban' | 'categories' | 'users' | 'contracts'>('quotes');
 
   const handleLogout = () => {
     logout();
@@ -29,6 +31,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'kanban' as const, label: 'Kanban', icon: Kanban },
     { id: 'categories' as const, label: 'Categorias', icon: Package },
     { id: 'users' as const, label: 'Usuários', icon: Users },
+    { id: 'contracts' as const, label: 'Contratos', icon: FileCheck },
   ];
 
   return (
@@ -87,6 +90,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'kanban' && <KanbanBoard />}
         {activeTab === 'categories' && <CategoryManagement />}
         {activeTab === 'users' && <UserManagement />}
+        {activeTab === 'contracts' && <ContractManagementRefactor />}
       </main>
     </div>
   );

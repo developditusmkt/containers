@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { QuoteProvider } from './contexts/QuoteContext';
 import { CategoryProvider } from './contexts/CategoryContext';
 import { OperationProvider } from './contexts/OperationContext';
+import { ContractProvider } from './contexts/ContractContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicQuote } from './pages/PublicQuote';
 import { AdminLogin } from './pages/AdminLogin';
@@ -16,7 +17,8 @@ function App() {
       <OperationProvider>
         <CategoryProvider>
           <QuoteProvider>
-            <Router>
+            <ContractProvider>
+              <Router>
               <Routes>
                 <Route path="/" element={<PublicQuote />} />
                 <Route path="/login" element={<AdminLogin />} />
@@ -33,6 +35,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Router>
+            </ContractProvider>
           </QuoteProvider>
         </CategoryProvider>
       </OperationProvider>

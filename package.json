@@ -16,16 +16,19 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
+    "@types/jquery": "^3.5.33",
     "@types/react-beautiful-dnd": "^13.1.8",
     "date-fns": "^3.6.0",
     "html2canvas": "^1.4.1",
+    "jquery": "^3.7.1",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.52.1",
-    "react-router-dom": "^6.26.0"
+    "react-router-dom": "^6.26.0",
+    "summernote": "^0.9.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
